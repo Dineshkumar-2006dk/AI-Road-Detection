@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Road Map{% endblock %}
+{% block page_title %}<i class="fas fa-map-location-dot me-2"></i>Road Damage Map{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card compact">
+      <div class="stat-icon sm" style="background:linear-gradient(135deg,#1565c0,#0288d1);"><i class="fas fa-map-pin"></i></div>
+      <div class="stat-body">
+        <div class="stat-number">{{ total_markers }}</div>
+        <div class="stat-label">Total Markers</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="map-legend-pill" style="border-color:#28a745;"><span class="dot" style="background:#28a745;"></span>Good Road</div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="map-legend-pill" style="border-color:#ffc107;"><span class="dot" style="background:#ffc107;"></span>Moderate / Poor</div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="map-legend-pill" style="border-color:#dc3545;"><span class="dot" style="background:#dc3545;"></span>Critical Road</div>
+  </div>
+</div>
+
+<div class="rg-card">
+  <div class="rg-card-header d-flex justify-content-between align-items-center">
+    <span><i class="fas fa-globe me-2" style="color:#42a5f5;"></i>Interactive Detection Map</span>
+    {% if total_markers == 0 %}
+    <span style="color:#ffa726;font-size:13px;">
+      <i class="fas fa-info-circle me-1"></i>No GPS detections yet – enable GPS when analyzing images
+    </span>
+    {% endif %}
+  </div>
+  <div class="rg-card-body p-0">
+    <div id="currentLocationBox" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#78909c;font-size:13px;">
+      <i class="fas fa-location-crosshairs me-1" style="color:#42a5f5;"></i>
+      <span id="currentLocationText">Capturing current location...</span>
+      <a id="currentMapsLink" href="#" target="_blank" class="d-none" style="color:#42a5f5;margin-left:10px;">Open in Google Maps</a>
+    </div>
+    <div id="mapFrame" style="width:100%;height:600px;border-radius:0 0 16px 16px;overflow:hidden;">
+      {{ map_html | safe }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addCurrentLocationMarker(lat, lon) {
+  const link = `https://www.google.com/maps?q=${lat},${lon}`;
+  document.getElementById('currentLocationText').textContent =
+    `Current GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+  const mapsLink = document.getElementById('currentMapsLink');
+  mapsLink.href = link;
+  mapsLink.classList.remove('d-none');
+  console.log('[GPS] GPS captured:', lat, lon);
+
+  const frame = document.querySelector('#mapFrame iframe');
+  if (!frame) return;
+  const placeMarker = () => {
+    try {
+      const win = frame.contentWindow;
+      const mapKey = Object.keys(win).find(k => k.startsWith('map_') && win[k] && win[k].setView);
+      if (!mapKey || !win.L) return;
+      const map = win[mapKey];
+      win.L.marker([lat, lon]).addTo(map)
+        .bindPopup(`<b>Your current location</b><br>${lat.toFixed(6)}, ${lon.toFixed(6)}<br><a href="${link}" target="_blank">Open in Google Maps</a>`)
+        .openPopup();
+      map.setView([lat, lon], 15);
+    } catch (err) {
+      console.error('GPS map marker error:', err);
+    }
+  };
+  frame.addEventListener('load', placeMarker, { once: true });
+  setTimeout(placeMarker, 500);
+}
+
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    pos => addCurrentLocationMarker(pos.coords.latitude, pos.coords.longitude),
+    err => {
+      document.getElementById('currentLocationText').textContent = `GPS permission denied: ${err.message}`;
+      console.error('[GPS] GPS permission denied:', err.message);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+} else {
+  document.getElementById('currentLocationText').textContent = 'GPS unavailable: browser geolocation is not supported.';
+}
+</script>
+{% endblock %}

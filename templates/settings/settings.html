@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}<i class="fas fa-sliders me-2"></i>Settings{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Detection Settings -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-crosshairs me-2"></i>Detection Settings</div>
+      <div class="rg-card-body">
+        <div class="setting-item">
+          <div class="setting-label">
+            <span>Confidence Threshold</span>
+            <span class="setting-val" id="confVal">{{ settings.conf_threshold }}</span>
+          </div>
+          <div class="setting-desc">Minimum confidence for a detection to be accepted (0.1 – 0.9)</div>
+          <input type="range" class="rg-range" id="confThresh" min="0.1" max="0.9" step="0.05"
+                 value="{{ settings.conf_threshold }}" oninput="document.getElementById('confVal').textContent=parseFloat(this.value).toFixed(2);">
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">
+            <span>NMS Threshold</span>
+            <span class="setting-val" id="nmsVal">{{ settings.nms_threshold }}</span>
+          </div>
+          <div class="setting-desc">Non-Maximum Suppression threshold for overlapping boxes</div>
+          <input type="range" class="rg-range" id="nmsThresh" min="0.1" max="0.9" step="0.05"
+                 value="{{ settings.nms_threshold }}" oninput="document.getElementById('nmsVal').textContent=parseFloat(this.value).toFixed(2);">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI Settings -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-palette me-2"></i>UI & Language</div>
+      <div class="rg-card-body">
+        <div class="setting-item">
+          <div class="setting-label"><span>Theme</span></div>
+          <div class="d-flex gap-2 mt-2">
+            <button class="theme-btn {% if settings.theme=='dark' %}active{% endif %}" id="darkBtn" onclick="setTheme('dark')">
+              <i class="fas fa-moon me-2"></i>Dark Mode
+            </button>
+            <button class="theme-btn {% if settings.theme=='light' %}active{% endif %}" id="lightBtn" onclick="setTheme('light')">
+              <i class="fas fa-sun me-2"></i>Light Mode
+            </button>
+          </div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label"><span>Language</span></div>
+          <select id="langSelect" class="form-input-sm mt-2">
+            <option value="en" {% if settings.language=='en' %}selected{% endif %}>English</option>
+            <option value="ta" {% if settings.language=='ta' %}selected{% endif %}>Tamil (தமிழ்)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Voice Settings -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-volume-high me-2"></i>Voice Alerts</div>
+      <div class="rg-card-body">
+        <div class="setting-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="setting-label-main">Voice Alerts</div>
+              <div class="setting-desc">Play audio alerts after each detection</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="voiceToggleSetting" {% if settings.voice_enabled %}checked{% endif %}>
+              <label for="voiceToggleSetting"></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Settings -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-envelope me-2"></i>Email Notifications</div>
+      <div class="rg-card-body">
+        <div class="setting-item">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <div class="setting-label-main">Auto Email Alerts</div>
+              <div class="setting-desc">Auto-send report after each detection</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="emailToggle" {% if settings.email_alerts %}checked{% endif %}>
+              <label for="emailToggle"></label>
+            </div>
+          </div>
+          <label class="form-label-sm">Notification Email</label>
+          <input type="email" id="notifEmail" class="form-input-sm" placeholder="alerts@example.com"
+                 value="{{ settings.notification_email or '' }}">
+          <div class="row g-2 mt-2">
+            <div class="col-8">
+              <label class="form-label-sm">SMTP Server</label>
+              <input type="text" id="smtpServer" class="form-input-sm" placeholder="smtp.gmail.com"
+                     value="{{ settings.smtp_server or 'smtp.gmail.com' }}">
+            </div>
+            <div class="col-4">
+              <label class="form-label-sm">SMTP Port</label>
+              <input type="number" id="smtpPort" class="form-input-sm" placeholder="587"
+                     value="{{ settings.smtp_port or 587 }}">
+            </div>
+          </div>
+          <div class="row g-2 mt-2">
+            <div class="col-6">
+              <label class="form-label-sm">SMTP Username</label>
+              <input type="text" id="smtpUsername" class="form-input-sm" placeholder="username@example.com"
+                     value="{{ settings.smtp_username or '' }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">SMTP Password</label>
+              <input type="password" id="smtpPassword" class="form-input-sm" placeholder="SMTP Password"
+                     value="{{ settings.smtp_password or '' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Settings -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-video me-2"></i>Camera Settings</div>
+      <div class="rg-card-body">
+        <div class="setting-item">
+          <label class="form-label-sm">Camera Index</label>
+          <select id="camIndex" class="form-input-sm">
+            <option value="0" {% if settings.camera_index==0 %}selected{% endif %}>Camera 0 (Default)</option>
+            <option value="1" {% if settings.camera_index==1 %}selected{% endif %}>Camera 1</option>
+            <option value="2" {% if settings.camera_index==2 %}selected{% endif %}>Camera 2</option>
+          </select>
+        </div>
+        <div class="setting-item mt-3">
+          <div class="setting-label">
+            <span>Detection FPS</span>
+            <span class="setting-val" id="fpsVal">{{ settings.camera_fps }}</span>
+          </div>
+          <input type="range" class="rg-range" id="camFps" min="1" max="30" step="1"
+                 value="{{ settings.camera_fps }}" oninput="document.getElementById('fpsVal').textContent=this.value;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Info -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-brain me-2"></i>AI Model Information</div>
+      <div class="rg-card-body">
+        <div class="model-info-row"><span>Model:</span><span class="model-val">YOLOv8 Custom</span></div>
+        <div class="model-info-row"><span>Classes:</span><span class="model-val">11 damage types + normal</span></div>
+        <div class="model-info-row"><span>Target Accuracy:</span><span class="model-val text-success">≥ 95%</span></div>
+        <div class="model-info-row"><span>Mode:</span>
+          <span class="model-val" id="modelMode">
+            <span class="spinner-border spinner-border-sm text-primary"></span>
+          </span>
+        </div>
+        <div class="model-info-row"><span>Augmentation:</span><span class="model-val">Brightness, Flip, Rotate, Noise, Shadow</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Button -->
+<div class="d-flex justify-content-end mt-4 gap-3">
+  <button class="btn-result-action secondary" onclick="resetDefaults()">
+    <i class="fas fa-redo me-2"></i>Reset Defaults
+  </button>
+  <button class="btn-detect px-5" onclick="saveSettings()">
+    <i class="fas fa-save me-2"></i>Save Settings
+  </button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTheme = '{{ settings.theme }}';
+
+function setTheme(t) {
+  currentTheme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('darkBtn').classList.toggle('active', t==='dark');
+  document.getElementById('lightBtn').classList.toggle('active', t==='light');
+}
+
+async function saveSettings() {
+  const payload = {
+    conf_threshold:     parseFloat(document.getElementById('confThresh').value),
+    nms_threshold:      parseFloat(document.getElementById('nmsThresh').value),
+    theme:              currentTheme,
+    language:           document.getElementById('langSelect').value,
+    voice_enabled:      document.getElementById('voiceToggleSetting').checked,
+    email_alerts:       document.getElementById('emailToggle').checked,
+    notification_email: document.getElementById('notifEmail').value,
+    camera_index:       parseInt(document.getElementById('camIndex').value),
+    camera_fps:         parseInt(document.getElementById('camFps').value),
+    smtp_server:        document.getElementById('smtpServer').value,
+    smtp_port:          parseInt(document.getElementById('smtpPort').value),
+    smtp_username:      document.getElementById('smtpUsername').value,
+    smtp_password:      document.getElementById('smtpPassword').value,
+  };
+  const res = await fetch('/settings/api/save', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCsrfToken()},
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (data.success) showToast('Settings saved successfully!','success');
+  else showToast('Failed to save settings','danger');
+}
+
+function resetDefaults() {
+  document.getElementById('confThresh').value = 0.40;
+  document.getElementById('nmsThresh').value  = 0.45;
+  document.getElementById('confVal').textContent = '0.40';
+  document.getElementById('nmsVal').textContent  = '0.45';
+}
+
+// Check model mode
+fetch('/settings/api/get').then(r=>r.json()).then(() => {
+  document.getElementById('modelMode').innerHTML = '<span style="color:#ffa726;">⚡ Simulation (OpenCV)</span>';
+}).catch(()=>{});
+</script>
+{% endblock %}

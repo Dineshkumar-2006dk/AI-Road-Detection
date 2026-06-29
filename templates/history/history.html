@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Detection History{% endblock %}
+{% block page_title %}<i class="fas fa-clock-rotate-left me-2"></i>Detection History{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="rg-card mb-4">
+  <div class="rg-card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label-sm">Search Damage Type</label>
+        <div class="input-group-rg">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" class="form-input-sm" placeholder="e.g. pothole, crack...">
+        </div>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label-sm">Condition</label>
+        <select id="condFilter" class="form-input-sm">
+          <option value="all">All</option>
+          <option value="Good">Good</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Poor">Poor</option>
+          <option value="Critical">Critical</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label-sm">Severity</label>
+        <select id="sevFilter" class="form-input-sm">
+          <option value="all">All</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Critical">Critical</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label-sm">Source</label>
+        <select id="srcFilter" class="form-input-sm">
+          <option value="all">All</option>
+          <option value="image">Image</option>
+          <option value="camera">Camera</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button class="btn-filter" onclick="loadHistory(1)"><i class="fas fa-search me-1"></i>Filter</button>
+        <button class="btn-filter secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export + Count -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div style="color:#78909c;font-size:14px;">
+    Showing <span id="showCount" style="color:#42a5f5;font-weight:600;">0</span> of
+    <span id="totalCount" style="color:#42a5f5;font-weight:600;">0</span> records
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="/history/api/export/csv" class="btn-export" download>
+      <i class="fas fa-file-csv me-1"></i>CSV
+    </a>
+    <a href="/history/api/export/excel" class="btn-export" download>
+      <i class="fas fa-file-excel me-1"></i>Excel
+    </a>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="rg-card">
+  <div class="table-responsive">
+    <table class="table rg-table" id="historyTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date / Time</th>
+          <th>Preview</th>
+          <th>Condition</th>
+          <th>Severity</th>
+          <th>Damage Types</th>
+          <th>Confidence</th>
+          <th>Location</th>
+          <th>Email</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody">
+        <tr><td colspan="10" class="text-center py-5">
+          <div class="spinner-border text-primary me-2"></div>Loading history...
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center py-3" id="paginationWrapper">
+    <nav><ul class="pagination rg-pagination" id="pagination"></ul></nav>
+  </div>
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal fade rg-modal" id="imgModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content rg-modal-content">
+      <div class="modal-header rg-modal-header">
+        <h5 class="modal-title"><i class="fas fa-image me-2"></i>Detection Result</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <img id="modalImg" style="width:100%;border-radius:0 0 12px 12px;" alt="Result">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const RESULT_BASE = '/detect/results/';
+const UPLOAD_BASE = '/detect/uploads/';
+let currentPage = 1;
+
+async function loadHistory(page = 1) {
+  currentPage = page;
+  const search = document.getElementById('searchInput').value;
+  const cond   = document.getElementById('condFilter').value;
+  const sev    = document.getElementById('sevFilter').value;
+  const src    = document.getElementById('srcFilter').value;
+
+  const res = await fetch(`/history/api/list?page=${page}&per_page=15&search=${encodeURIComponent(search)}&condition=${cond}&severity=${sev}&source=${src}`);
+  const data = await res.json();
+
+  document.getElementById('showCount').textContent = data.items.length;
+  document.getElementById('totalCount').textContent = data.total;
+
+  const tbody = document.getElementById('historyBody');
+  if (data.items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5" style="color:#546e7a;">No detections found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.items.map(d => {
+    const condColor = {Good:'#28a745',Moderate:'#ffc107',Poor:'#fd7e14',Critical:'#dc3545'}[d.road_condition]||'#6c757d';
+    const sevColor  = {Low:'#28a745',Medium:'#ffc107',High:'#fd7e14',Critical:'#dc3545'}[d.severity]||'#6c757d';
+    const dmg = (d.damage_types||[]).map(t=>`<span class="dmg-tag">${t.replace(/_/g,' ')}</span>`).join('');
+    const thumb = d.result_image ? `<img src="${RESULT_BASE}${d.result_image}" class="result-thumb" onclick="showImg('${RESULT_BASE}${d.result_image}')" alt="result">` : '<span class="no-img"><i class="fas fa-image"></i></span>';
+    const mapsLink = d.maps_link ? `<a href="${d.maps_link}" target="_blank" style="color:#42a5f5;font-size:12px;"><i class="fas fa-map-pin me-1"></i>Map</a>` : '<span style="color:#455a64;">No GPS</span>';
+    const emailStatus = d.email_sent ? '<span style="color:#66bb6a;font-size:12px;">Sent</span>' : '<span style="color:#78909c;font-size:12px;">Not sent</span>';
+    return `<tr>
+      <td><span style="color:#546e7a;">#${d.id}</span></td>
+      <td style="white-space:nowrap;color:#b0bec5;font-size:13px;">${d.timestamp}</td>
+      <td>${thumb}</td>
+      <td><span class="cond-chip" style="background:${condColor}20;color:${condColor};border:1px solid ${condColor}40;">${d.road_condition||'—'}</span></td>
+      <td><span class="cond-chip" style="background:${sevColor}20;color:${sevColor};border:1px solid ${sevColor}40;">${d.severity||'—'}</span></td>
+      <td><div class="dmg-tags">${dmg||'<span style="color:#455a64;">None</span>'}</div></td>
+      <td><div class="conf-bar-mini"><div style="width:${d.avg_confidence}%;background:${condColor};height:100%;border-radius:3px;"></div></div><span style="font-size:12px;color:#b0bec5;">${d.avg_confidence}%</span></td>
+      <td>${mapsLink}</td>
+      <td>${emailStatus}</td>
+      <td>
+        <div class="d-flex gap-1">
+          <a href="/history/api/export/pdf/${d.id}" download class="btn-tbl-action" title="PDF"><i class="fas fa-file-pdf"></i></a>
+          <button class="btn-tbl-action danger" onclick="deleteDetection(${d.id})" title="Delete"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPagination(data);
+}
+
+function renderPagination(data) {
+  const ul = document.getElementById('pagination');
+  ul.innerHTML = '';
+  if (data.pages <= 1) return;
+  const addBtn = (label, page, active=false, disabled=false) => {
+    const li = document.createElement('li');
+    li.className = `page-item${active?' active':''}${disabled?' disabled':''}`;
+    li.innerHTML = `<button class="page-link rg-page-link" onclick="loadHistory(${page})">${label}</button>`;
+    ul.appendChild(li);
+  };
+  addBtn('‹', currentPage-1, false, !data.has_prev);
+  for (let i=1;i<=data.pages;i++) {
+    if (i===1||i===data.pages||Math.abs(i-currentPage)<=1) addBtn(i, i, i===currentPage);
+    else if (Math.abs(i-currentPage)===2) addBtn('…', i, false, true);
+  }
+  addBtn('›', currentPage+1, false, !data.has_next);
+}
+
+async function deleteDetection(id) {
+  if (!confirm('Delete this detection record?')) return;
+  const res = await fetch(`/history/api/delete/${id}`, {method:'DELETE',headers:{'X-CSRFToken': getCsrfToken()}});
+  const data = await res.json();
+  if (data.success) { showToast('Detection deleted','success'); loadHistory(currentPage); }
+}
+
+function showImg(src) {
+  document.getElementById('modalImg').src = src;
+  new bootstrap.Modal(document.getElementById('imgModal')).show();
+}
+
+function resetFilters() {
+  ['searchInput','condFilter','sevFilter','srcFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = el.tagName==='SELECT' ? 'all' : '';
+  });
+  loadHistory(1);
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if(e.key==='Enter') loadHistory(1); });
+loadHistory(1);
+</script>
+{% endblock %}

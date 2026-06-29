@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Image Detection{% endblock %}
+{% block page_title %}<i class="fas fa-image me-2"></i>Image Detection{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Upload Panel -->
+  <div class="col-lg-5">
+    <div class="rg-card h-100">
+      <div class="rg-card-header">
+        <i class="fas fa-upload me-2" style="color:#42a5f5;"></i>Upload Road Image
+      </div>
+      <div class="rg-card-body">
+        <!-- Drop Zone -->
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+          <div class="drop-zone-text">Drag & Drop Image Here</div>
+          <div class="drop-zone-sub">or click to browse files</div>
+          <div class="drop-zone-formats">
+            <span class="format-badge">JPG</span>
+            <span class="format-badge">JPEG</span>
+            <span class="format-badge">PNG</span>
+            <span class="format-badge">BMP</span>
+          </div>
+          <input type="file" id="imageInput" accept=".jpg,.jpeg,.png,.bmp" class="d-none">
+        </div>
+
+        <!-- Preview -->
+        <div id="previewSection" class="d-none mt-3">
+          <div class="preview-header">
+            <span><i class="fas fa-image me-1"></i>Preview</span>
+            <button class="btn-icon-sm" onclick="clearImage()"><i class="fas fa-times"></i></button>
+          </div>
+          <img id="previewImg" class="preview-img" alt="Preview">
+          <div id="fileInfo" class="file-info-row"></div>
+        </div>
+
+        <!-- GPS -->
+        <div class="option-section mt-3">
+          <div class="option-header">
+            <i class="fas fa-location-dot" style="color:#42a5f5;"></i>
+            GPS Location
+            <button class="btn-sm-outline" onclick="getLocation()">
+              <i class="fas fa-crosshairs me-1"></i>Auto Detect
+            </button>
+          </div>
+          
+          <!-- Location Search input -->
+          <div class="input-group-sm mt-2 mb-2 d-flex align-items-center" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 8px;">
+            <input type="text" id="locationSearchInput" class="form-control-sm bg-transparent border-0 text-white w-100 py-1" style="outline: none; box-shadow: none;" placeholder="Search location (e.g., Pondicherry)..." onkeydown="if(event.key==='Enter'){ searchLocation(); event.preventDefault(); }">
+            <button class="btn-icon-sm" onclick="searchLocation()" title="Search location" style="background: none; border: none; color: #42a5f5; cursor: pointer; padding: 4px 8px;">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <input type="number" id="latInput" class="form-input-sm" placeholder="Latitude" step="any">
+            </div>
+            <div class="col-6">
+              <input type="number" id="lonInput" class="form-input-sm" placeholder="Longitude" step="any">
+            </div>
+          </div>
+          <div id="locationStatus" class="location-status"></div>
+        </div>
+
+        <!-- Email -->
+        <div class="option-section mt-3">
+          <div class="option-header">
+            <i class="fas fa-envelope" style="color:#42a5f5;"></i>
+            Email Report (Optional)
+          </div>
+          <input type="email" id="emailInput" class="form-input-sm mt-1" placeholder="recipient@example.com">
+        </div>
+
+        <!-- Detect Button -->
+        <button id="detectBtn" class="btn-detect mt-4 w-100" onclick="runDetection()" disabled>
+          <i class="fas fa-magnifying-glass-chart me-2"></i>Analyze Road Image
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="col-lg-7">
+    <!-- Idle state -->
+    <div id="idlePanel" class="rg-card h-100 d-flex flex-column align-items-center justify-content-center">
+      <div class="idle-icon"><i class="fas fa-road"></i></div>
+      <h5 style="color:#546e7a;margin-top:16px;">No Image Analyzed Yet</h5>
+      <p style="color:#455a64;font-size:14px;text-align:center;max-width:320px;">Upload a road image and click "Analyze Road Image" to get AI-powered damage detection results.</p>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingPanel" class="rg-card h-100 d-flex flex-column align-items-center justify-content-center d-none">
+      <div class="ai-loader">
+        <div class="loader-ring"></div>
+        <div class="loader-ring-inner"></div>
+        <i class="fas fa-brain loader-icon"></i>
+      </div>
+      <h5 style="color:#42a5f5;margin-top:24px;">AI Analyzing Road Image</h5>
+      <p style="color:#546e7a;font-size:14px;">Running YOLOv8 inference...</p>
+      <div class="detection-timer" id="detectionTimer">0.000s</div>
+      <div class="progress-bar-rg mt-3"><div class="progress-fill-anim"></div></div>
+    </div>
+
+    <!-- Result -->
+    <div id="resultPanel" class="d-none">
+      <!-- Condition badge -->
+      <div id="conditionBanner" class="condition-banner mb-4">
+        <div class="condition-icon"><i class="fas fa-road"></i></div>
+        <div class="condition-body">
+          <div class="condition-label">Road Condition</div>
+          <div class="condition-value" id="conditionValue">—</div>
+        </div>
+        <div class="severity-badge" id="severityBadge">—</div>
+      </div>
+
+      <!-- Images row -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="img-compare-card">
+            <div class="img-compare-label">Original Image</div>
+            <img id="originalImg" class="compare-img" alt="Original">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="img-compare-card">
+            <div class="img-compare-label" style="background:rgba(33,150,243,.2);color:#42a5f5;">
+              <i class="fas fa-magic me-1"></i>AI Result
+            </div>
+            <img id="resultImg" class="compare-img" alt="Result">
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="row g-3 mb-4" id="metricsRow">
+        <div class="col-6 col-md-3">
+          <div class="metric-chip">
+            <div class="metric-chip-icon"><i class="fas fa-bullseye"></i></div>
+            <div class="metric-chip-val" id="mConf">—</div>
+            <div class="metric-chip-label">Confidence</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-chip">
+            <div class="metric-chip-icon"><i class="fas fa-layer-group"></i></div>
+            <div class="metric-chip-val" id="mCount">—</div>
+            <div class="metric-chip-label">Detections</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-chip">
+            <div class="metric-chip-icon"><i class="fas fa-clock"></i></div>
+            <div class="metric-chip-val" id="mTime">—</div>
+            <div class="metric-chip-label">Pred. Time</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-chip">
+            <div class="metric-chip-icon"><i class="fas fa-tags"></i></div>
+            <div class="metric-chip-val" id="mDmgCount">—</div>
+            <div class="metric-chip-label">Damage Types</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Damage type list -->
+      <div class="rg-card mb-3">
+        <div class="rg-card-header"><i class="fas fa-list-check me-2"></i>Detected Damage Types</div>
+        <div class="rg-card-body">
+          <div id="damageList" class="damage-list"></div>
+        </div>
+      </div>
+
+      <!-- GPS & Map -->
+      <div id="gpsSection" class="rg-card mb-3 d-none">
+        <div class="rg-card-header"><i class="fas fa-location-dot me-2"></i>GPS Location</div>
+        <div class="rg-card-body" id="gpsBody"></div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="d-flex flex-wrap gap-2">
+        <a id="downloadBtn" href="#" download class="btn-result-action primary">
+          <i class="fas fa-image me-2"></i>Download Image
+        </a>
+        <a id="pdfReportBtn" href="#" target="_blank" class="btn-result-action primary">
+          <i class="fas fa-file-pdf me-2"></i>Download PDF Report
+        </a>
+        <button class="btn-result-action secondary" onclick="speakAlert()">
+          <i class="fas fa-volume-high me-2"></i>Voice Alert
+        </button>
+        <button class="btn-result-action secondary" id="emailBtn" onclick="sendEmail()">
+          <i class="fas fa-envelope me-2"></i>Send Report
+        </button>
+        <button class="btn-result-action secondary" onclick="printReport()">
+          <i class="fas fa-print me-2"></i>Print
+        </button>
+        <button class="btn-result-action secondary" onclick="clearImage()">
+          <i class="fas fa-redo me-2"></i>New Scan
+        </button>
+      </div>
+      <div id="emailStatus" class="mt-2"></div>
+      <div id="simModeNote" class="sim-mode-note d-none">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Simulation Mode:</strong> Running OpenCV-based heuristic detection. Add YOLOv8 <code>best.pt</code> weights to <code>weights/</code> folder for real AI detection.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/detection.js') }}"></script>
+{% endblock %}

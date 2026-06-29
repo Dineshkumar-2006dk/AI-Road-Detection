@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Report{% endblock %}
+{% block page_title %}<i class="fas fa-file-pdf me-2"></i>Detection Report{% endblock %}
+{% block content %}
+<div class="rg-card">
+  <div class="rg-card-body text-center py-5">
+    <i class="fas fa-file-pdf" style="font-size:3rem;color:#ef5350;margin-bottom:16px;"></i>
+    <h5 style="color:#e0e0e0;">PDF Report Viewer</h5>
+    <p style="color:#546e7a;">Use the History page to download PDF reports for individual detections.</p>
+    <a href="{{ url_for('history.history') }}" class="btn-detect mt-3" style="display:inline-flex;">
+      <i class="fas fa-clock-rotate-left me-2"></i>Go to History
+    </a>
+  </div>
+</div>
+{% endblock %}

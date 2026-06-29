@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Manage Users{% endblock %}
+{% block page_title %}<i class="fas fa-users-cog me-2"></i>Manage Users{% endblock %}
+
+{% block content %}
+<div class="rg-card">
+  <div class="rg-card-header d-flex justify-content-between align-items-center">
+    <span><i class="fas fa-users me-2"></i>All Users ({{ users|length }})</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table rg-table">
+      <thead>
+        <tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Last Login</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr id="userRow{{ user.id }}">
+          <td style="color:#546e7a;">#{{ user.id }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="user-avatar-sm">{{ user.username[0]|upper }}</div>
+              <span style="color:#e0e0e0;">{{ user.username }}</span>
+            </div>
+          </td>
+          <td style="color:#78909c;font-size:13px;">{{ user.email }}</td>
+          <td>
+            {% if user.role == 'admin' %}
+            <span class="role-badge admin"><i class="fas fa-shield-halved me-1"></i>Admin</span>
+            {% else %}
+            <span class="role-badge user"><i class="fas fa-user me-1"></i>User</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="status-badge {% if user.is_active %}active{% else %}inactive{% endif %}" id="statusBadge{{ user.id }}">
+              {% if user.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+          </td>
+          <td style="font-size:12px;color:#546e7a;">
+            {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}
+          </td>
+          <td style="font-size:12px;color:#546e7a;">
+            {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <button class="btn-tbl-action" title="Toggle Active" onclick="toggleUser({{ user.id }})">
+                <i class="fas fa-toggle-on"></i>
+              </button>
+              {% if user.id != current_user.id %}
+              <button class="btn-tbl-action danger" title="Delete" onclick="deleteUser({{ user.id }})">
+                <i class="fas fa-trash"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function toggleUser(id) {
+  const res = await fetch(`/admin/api/users/${id}/toggle`, {
+    method:'POST', headers:{'X-CSRFToken':getCsrfToken()}
+  });
+  const data = await res.json();
+  if (data.success) {
+    const badge = document.getElementById(`statusBadge${id}`);
+    badge.textContent = data.is_active ? 'Active' : 'Inactive';
+    badge.className = `status-badge ${data.is_active?'active':'inactive'}`;
+    showToast(`User ${data.is_active?'activated':'deactivated'}`,'success');
+  }
+}
+async function deleteUser(id) {
+  if (!confirm('Delete this user permanently?')) return;
+  const res = await fetch(`/admin/api/users/${id}`, {
+    method:'DELETE', headers:{'X-CSRFToken':getCsrfToken()}
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById(`userRow${id}`).remove();
+    showToast('User deleted','success');
+  }
+}
+</script>
+{% endblock %}

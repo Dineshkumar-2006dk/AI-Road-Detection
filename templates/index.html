@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="RoadGuard AI – AI-Based Road Quality Monitoring System using Computer Vision and Deep Learning">
+  <title>RoadGuard AI – Intelligent Road Quality Monitoring</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+  <style>
+    /* ── Landing page extras ── */
+    .hero-section {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at top, #0d2137 0%, #0a0f1e 60%);
+      display: flex; align-items: center; position: relative; overflow: hidden;
+    }
+    .hero-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18; animation: orb-pulse 6s ease-in-out infinite; }
+    .hero-orb-1 { width:500px;height:500px;background:#1565c0;top:-100px;right:-100px; }
+    .hero-orb-2 { width:350px;height:350px;background:#0288d1;bottom:-50px;left:-80px;animation-delay:3s; }
+    @keyframes orb-pulse { 0%,100%{transform:scale(1);}50%{transform:scale(1.15);} }
+    .hero-badge { display:inline-flex;align-items:center;gap:8px;background:rgba(21,101,192,.2);
+      border:1px solid rgba(33,150,243,.4);border-radius:100px;padding:6px 18px;
+      color:#90caf9;font-size:13px;font-weight:500;margin-bottom:24px;backdrop-filter:blur(10px); }
+    .hero-badge i { color:#42a5f5; }
+    .hero-title { font-size:clamp(2.2rem,5vw,4rem);font-weight:900;line-height:1.1;
+      background:linear-gradient(135deg,#fff 40%,#42a5f5);-webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;background-clip:text;margin-bottom:20px; }
+    .hero-subtitle { font-size:1.15rem;color:#90a4ae;line-height:1.7;max-width:540px;margin-bottom:36px; }
+    .hero-btns { display:flex;flex-wrap:wrap;gap:14px;margin-bottom:48px; }
+    .btn-primary-rg { background:linear-gradient(135deg,#1565c0,#0288d1);border:none;
+      padding:14px 32px;border-radius:12px;color:#fff;font-weight:600;font-size:15px;
+      transition:all .3s;box-shadow:0 4px 20px rgba(21,101,192,.4); }
+    .btn-primary-rg:hover { transform:translateY(-2px);box-shadow:0 8px 30px rgba(21,101,192,.6);color:#fff; }
+    .btn-outline-rg { background:transparent;border:1.5px solid rgba(255,255,255,.25);
+      padding:14px 32px;border-radius:12px;color:#fff;font-weight:600;font-size:15px;
+      transition:all .3s;backdrop-filter:blur(4px); }
+    .btn-outline-rg:hover { background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5);
+      transform:translateY(-2px);color:#fff; }
+    .hero-stats { display:flex;gap:32px;flex-wrap:wrap; }
+    .hero-stat { text-align:center; }
+    .hero-stat-number { font-size:1.8rem;font-weight:800;color:#42a5f5; }
+    .hero-stat-label  { font-size:12px;color:#78909c;text-transform:uppercase;letter-spacing:.08em; }
+    .hero-visual { position:relative;display:flex;justify-content:center;align-items:center; }
+    .hero-card-main { background:rgba(255,255,255,.04);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;
+      box-shadow:0 20px 60px rgba(0,0,0,.4);max-width:420px;width:100%; }
+    .detection-demo { width:100%;height:200px;background:linear-gradient(135deg,#0d1b2a,#1a2744);
+      border-radius:12px;margin-bottom:16px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center; }
+    .detection-demo i { font-size:4rem;color:#1565c0;opacity:.4; }
+    .demo-bbox { position:absolute;border:2px solid #f44336;border-radius:4px;
+      top:40px;left:60px;width:120px;height:80px;animation:bbox-pulse 2s ease-in-out infinite; }
+    .demo-label { position:absolute;top:38px;left:60px;background:#f44336;
+      color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px 3px 0 0; }
+    @keyframes bbox-pulse { 0%,100%{opacity:1;}50%{opacity:.5;} }
+    .demo-confidence { display:flex;align-items:center;gap:12px;margin-bottom:10px; }
+    .demo-bar { flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden; }
+    .demo-fill { height:100%;background:linear-gradient(90deg,#1565c0,#42a5f5);
+      border-radius:3px;animation:fill-anim 3s ease-in-out infinite; }
+    @keyframes fill-anim { 0%{width:0;}50%{width:87%;}100%{width:87%;} }
+    /* Feature section */
+    .feat-section { padding:100px 0;background:#0a0f1e; }
+    .feat-card { background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+      border-radius:16px;padding:28px;transition:all .3s;height:100%; }
+    .feat-card:hover { background:rgba(21,101,192,.1);border-color:rgba(33,150,243,.3);
+      transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.3); }
+    .feat-icon { width:56px;height:56px;border-radius:14px;display:flex;align-items:center;
+      justify-content:center;font-size:1.4rem;margin-bottom:16px;
+      background:linear-gradient(135deg,rgba(21,101,192,.3),rgba(2,136,209,.2)); }
+    .feat-title { font-weight:700;color:#e3f2fd;margin-bottom:8px; }
+    .feat-desc  { color:#78909c;font-size:14px;line-height:1.6; }
+    /* Tech section */
+    .tech-section { padding:80px 0;background:linear-gradient(180deg,#0a0f1e,#0d1b2a); }
+    .tech-badge { display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 16px;
+      color:#b0bec5;font-size:13px;font-weight:500; }
+    /* CTA */
+    .cta-section { padding:100px 0;background:#0d1b2a;text-align:center; }
+  </style>
+</head>
+<body style="background:#0a0f1e;color:#e0e0e0;font-family:'Inter',sans-serif;margin:0;">
+
+<!-- Navbar -->
+<nav style="position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;
+     background:rgba(10,15,30,.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.05);">
+  <div class="container d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#1565c0,#0288d1);
+           border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">
+        🛡️
+      </div>
+      <span style="font-weight:800;font-size:1.2rem;color:#fff;">RoadGuard <span style="color:#42a5f5;">AI</span></span>
+    </div>
+    <div class="d-flex gap-3">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-sm px-4" style="border-radius:8px;">Login</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-sm px-4" style="background:linear-gradient(135deg,#1565c0,#0288d1);color:#fff;border-radius:8px;border:none;">Register</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero-section">
+  <div class="hero-orb hero-orb-1"></div>
+  <div class="hero-orb hero-orb-2"></div>
+  <div class="container" style="padding-top:80px;">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="hero-badge"><i class="fas fa-microchip"></i> Powered by YOLOv8 & OpenCV</div>
+        <h1 class="hero-title">AI Based Road Quality Monitoring System</h1>
+        <p class="hero-subtitle">Real-Time Intelligent Road Damage Detection using Artificial Intelligence, Computer Vision and Deep Learning. Monitor, detect, and report road conditions instantly.</p>
+        <div class="hero-btns">
+          <a href="{{ url_for('auth.login') }}" class="btn btn-primary-rg">
+            <i class="fas fa-play me-2"></i>Start Detection
+          </a>
+          <a href="{{ url_for('auth.login') }}" class="btn btn-outline-rg">
+            <i class="fas fa-gauge-high me-2"></i>Open Dashboard
+          </a>
+          <a href="#features" class="btn btn-outline-rg">
+            <i class="fas fa-info-circle me-2"></i>About Project
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><div class="hero-stat-number">11+</div><div class="hero-stat-label">Damage Classes</div></div>
+          <div class="hero-stat"><div class="hero-stat-number">95%+</div><div class="hero-stat-label">Target Accuracy</div></div>
+          <div class="hero-stat"><div class="hero-stat-number">Real-Time</div><div class="hero-stat-label">Detection Speed</div></div>
+        </div>
+      </div>
+      <div class="col-lg-6 hero-visual">
+        <div class="hero-card-main">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:10px;height:10px;background:#f44336;border-radius:50%;animation:orb-pulse 1.5s infinite;"></div>
+            <span style="color:#90caf9;font-size:13px;font-weight:600;">LIVE DETECTION ACTIVE</span>
+          </div>
+          <div class="detection-demo">
+            <i class="fas fa-road"></i>
+            <div class="demo-bbox"></div>
+            <div class="demo-label">POTHOLE 87%</div>
+          </div>
+          <div style="color:#78909c;font-size:12px;margin-bottom:12px;">AI CONFIDENCE SCORES</div>
+          <div class="demo-confidence">
+            <span style="color:#e0e0e0;font-size:13px;min-width:120px;">Pothole</span>
+            <div class="demo-bar"><div class="demo-fill" style="--w:87%;"></div></div>
+            <span style="color:#42a5f5;font-size:13px;font-weight:600;">87%</span>
+          </div>
+          <div class="demo-confidence">
+            <span style="color:#e0e0e0;font-size:13px;min-width:120px;">Surface Damage</span>
+            <div class="demo-bar"><div class="demo-fill" style="width:62%;animation:none;"></div></div>
+            <span style="color:#ffa726;font-size:13px;font-weight:600;">62%</span>
+          </div>
+          <div class="demo-confidence">
+            <span style="color:#e0e0e0;font-size:13px;min-width:120px;">Normal Road</span>
+            <div class="demo-bar"><div class="demo-fill" style="width:18%;animation:none;background:linear-gradient(90deg,#388e3c,#66bb6a);"></div></div>
+            <span style="color:#66bb6a;font-size:13px;font-weight:600;">18%</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px;">
+            <span style="background:rgba(244,67,54,.15);color:#f44336;border:1px solid rgba(244,67,54,.3);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;">Critical Road</span>
+            <span style="background:rgba(244,67,54,.15);color:#f44336;border:1px solid rgba(244,67,54,.3);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;">High Severity</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="feat-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <div class="hero-badge mx-auto mb-3" style="justify-content:center;"><i class="fas fa-star"></i> Key Features</div>
+      <h2 style="font-size:2.4rem;font-weight:800;color:#fff;">Everything You Need to Monitor Roads</h2>
+      <p style="color:#78909c;max-width:520px;margin:12px auto 0;">A complete AI-powered platform with real-time detection, GPS tracking, voice alerts, and comprehensive reporting.</p>
+    </div>
+    <div class="row g-4">
+      {% set features = [
+        ("fa-magnifying-glass-chart","Road Detection","Automatically detect and classify road conditions using advanced computer vision."),
+        ("fa-circle-exclamation","Pothole Detection","Identify potholes with precise bounding boxes and confidence scores."),
+        ("fa-grip-lines","Crack Detection","Detect longitudinal, transverse, and alligator cracks separately."),
+        ("fa-road","Surface Damage","Analyze surface texture and identify deterioration patterns."),
+        ("fa-triangle-exclamation","Road Failure","Detect road edge failures and depressions before they worsen."),
+        ("fa-location-dot","GPS Tracking","Auto-capture GPS coordinates and generate Google Maps links."),
+        ("fa-volume-high","Voice Alert","Instant multilingual voice alerts in English and Tamil."),
+        ("fa-envelope","Email Reporting","Send detailed PDF reports with images via SMTP email."),
+        ("fa-clock-rotate-left","History","Full searchable history with export to CSV, Excel, and PDF."),
+        ("fa-chart-bar","Statistics","Interactive dashboards with Chart.js pie, bar, and line charts."),
+        ("fa-brain","AI Analytics","Deep learning-powered analytics and trend detection."),
+        ("fa-gauge","Severity Prediction","Classify damage as Low, Medium, High, or Critical severity."),
+      ] %}
+      {% for icon, title, desc in features %}
+      <div class="col-md-6 col-lg-4">
+        <div class="feat-card">
+          <div class="feat-icon"><i class="fas {{ icon }}" style="color:#42a5f5;"></i></div>
+          <div class="feat-title">{{ title }}</div>
+          <div class="feat-desc">{{ desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="tech-section">
+  <div class="container text-center">
+    <h3 style="font-weight:700;color:#fff;margin-bottom:40px;">Powered By</h3>
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      {% for tech in ["YOLOv8","Python Flask","OpenCV","SQLite","Bootstrap 5","Chart.js","Folium","Geopy","pyttsx3","NumPy","Pandas","Pillow"] %}
+      <div class="tech-badge"><i class="fas fa-microchip" style="color:#42a5f5;"></i> {{ tech }}</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <div style="background:linear-gradient(135deg,rgba(21,101,192,.3),rgba(2,136,209,.2));border:1px solid rgba(33,150,243,.3);border-radius:24px;padding:60px 40px;">
+      <h2 style="font-size:2.2rem;font-weight:800;color:#fff;margin-bottom:16px;">Ready to Monitor Road Quality?</h2>
+      <p style="color:#90a4ae;margin-bottom:36px;max-width:480px;margin-left:auto;margin-right:auto;">Start detecting road damage in seconds with our AI-powered platform.</p>
+      <div class="d-flex justify-content-center gap-3">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary-rg">
+          <i class="fas fa-rocket me-2"></i>Get Started Free
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-rg">
+          <i class="fas fa-sign-in-alt me-2"></i>Sign In
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer style="padding:32px 0;background:#070b14;text-align:center;color:#546e7a;font-size:13px;">
+  <div class="container">
+    <p style="margin:0;">© 2024 <strong style="color:#42a5f5;">RoadGuard AI</strong> – AI-Based Road Quality Monitoring System. All rights reserved.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

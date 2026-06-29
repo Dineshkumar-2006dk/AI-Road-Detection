@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}About Developer{% endblock %}
+{% block page_title %}<i class="fas fa-code me-2"></i>About Developer{% endblock %}
+
+{% block content %}
+<style>
+  .dev-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+    padding: 20px;
+    animation: dev-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  
+  .dev-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 550px;
+    padding: 40px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+  }
+  
+  .dev-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(21, 101, 192, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  
+  .dev-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 30px rgba(66, 165, 245, 0.2);
+    border-color: rgba(66, 165, 245, 0.25);
+  }
+  
+  .dev-avatar-container {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 24px;
+    border-radius: 50%;
+    padding: 6px;
+    background: linear-gradient(135deg, #1565c0, #42a5f5);
+    box-shadow: 0 8px 24px rgba(21, 101, 192, 0.4);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .dev-card:hover .dev-avatar-container {
+    transform: scale(1.05) rotate(5deg);
+  }
+  
+  .dev-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #0a0f1e;
+    border: 3px solid #0d1326;
+  }
+  
+  .dev-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #e3f2fd;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  
+  .dev-role {
+    font-size: 0.95rem;
+    color: #42a5f5;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+  
+  .dev-details-list {
+    text-align: left;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  
+  .dev-detail-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  
+  .dev-detail-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .dev-detail-icon {
+    font-size: 1.1rem;
+    color: #42a5f5;
+    width: 28px;
+    margin-top: 3px;
+  }
+  
+  .dev-detail-content {
+    flex: 1;
+  }
+  
+  .dev-detail-label {
+    font-size: 0.75rem;
+    color: #546e7a;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
+  }
+  
+  .dev-detail-value {
+    font-size: 0.95rem;
+    color: #cfd8dc;
+    font-weight: 500;
+  }
+  
+  .dev-socials {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .dev-social-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #78909c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+  }
+  
+  .dev-social-btn:hover {
+    background: rgba(66, 165, 245, 0.15);
+    border-color: #42a5f5;
+    color: #fff;
+    transform: translateY(-3px);
+  }
+  
+  @keyframes dev-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<div class="dev-container">
+  <div class="dev-card">
+    <div class="dev-avatar-container">
+      <img src="{{ url_for('static', filename='dev_profile_icon.png') }}" alt="Dineshkumar S" class="dev-avatar">
+    </div>
+    
+    <div class="dev-name">DINESHKUMAR S</div>
+    <div class="dev-role">Lead Developer</div>
+    
+    <div class="dev-details-list">
+      <div class="dev-detail-item">
+        <div class="dev-detail-icon"><i class="fas fa-graduation-cap"></i></div>
+        <div class="dev-detail-content">
+          <div class="dev-detail-label">Degree</div>
+          <div class="dev-detail-value">B.E. (Electronics and Communication Engineering)</div>
+        </div>
+      </div>
+      
+      <div class="dev-detail-item">
+        <div class="dev-detail-icon"><i class="fas fa-university"></i></div>
+        <div class="dev-detail-content">
+          <div class="dev-detail-label">College</div>
+          <div class="dev-detail-value">Mailam Engineering College</div>
+        </div>
+      </div>
+      
+      <div class="dev-detail-item">
+        <div class="dev-detail-icon"><i class="fas fa-calendar-alt"></i></div>
+        <div class="dev-detail-content">
+          <div class="dev-detail-label">Batch</div>
+          <div class="dev-detail-value">2023–2027</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dev-socials">
+      <a href="mailto:dinesh.ece@gmail.com" class="dev-social-btn" title="Email Developer">
+        <i class="fas fa-envelope"></i>
+      </a>
+      <a href="https://www.linkedin.com/in/dineshkumar-selvam-642790293/?skipRedirect=true" class="dev-social-btn" target="_blank" rel="noopener noreferrer" title="LinkedIn Profile">
+        <i class="fab fa-linkedin-in"></i>
+      </a>
+      <a href="https://github.com/microsoft/pyright/blame/main/docs/configuration.md" class="dev-social-btn" target="_blank" rel="noopener noreferrer" title="GitHub Profile">
+        <i class="fab fa-github"></i>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Login – RoadGuard AI{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/auth.css') }}" rel="stylesheet">
+<style>
+  .auth-container {
+    animation: auth-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes auth-fade-in {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
+
+{% block body_class %}auth-body{% endblock %}
+
+{% block auth_content %}
+  <div class="auth-bg">
+    <canvas id="particleCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.55;pointer-events:none;"></canvas>
+    <div class="auth-orb orb-1"></div>
+    <div class="auth-orb orb-2"></div>
+    <div class="auth-orb orb-3"></div>
+  </div>
+
+  <div class="auth-container">
+    <!-- Brand -->
+    <div class="auth-brand">
+      <div class="brand-logo-container mb-3" style="animation: pulse 3s infinite ease-in-out;">
+        <img src="{{ url_for('static', filename='roadguard_logo.png') }}" alt="RoadGuard AI Logo" style="width: 85px; height: 85px; border-radius: 50%; box-shadow: 0 0 24px rgba(66, 165, 245, 0.45); border: 2px solid rgba(66, 165, 245, 0.3);">
+      </div>
+      <h1 class="brand-title">RoadGuard <span>AI</span></h1>
+      <p class="brand-tagline">Road Quality Monitoring System</p>
+    </div>
+
+    <!-- Card -->
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Welcome Back</h2>
+        <p>Sign in to your account</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group-rg">
+          <label class="form-label-rg"><i class="fas fa-envelope"></i> Email Address</label>
+          <div class="input-wrapper">
+            <input type="email" name="email" id="email" class="form-input-rg"
+                   placeholder="Enter your email" required autocomplete="email">
+            <div class="input-focus-line"></div>
+          </div>
+        </div>
+
+        <div class="form-group-rg">
+          <label class="form-label-rg"><i class="fas fa-lock"></i> Password</label>
+          <div class="input-wrapper">
+            <input type="password" name="password" id="password" class="form-input-rg"
+                   placeholder="Enter your password" required autocomplete="current-password">
+            <button type="button" class="pwd-toggle" onclick="togglePwd('password','eyeIcon1')">
+              <i class="fas fa-eye" id="eyeIcon1"></i>
+            </button>
+            <div class="input-focus-line"></div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <label class="remember-check">
+            <input type="checkbox" name="remember_me" id="remember_me">
+            <span class="checkmark"></span>
+            Remember me
+          </label>
+          <a href="{{ url_for('auth.forgot_password') }}" class="auth-link">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-auth-primary" id="loginBtn">
+          <span id="loginBtnText"><i class="fas fa-right-to-bracket me-2"></i>Sign In</span>
+          <span id="loginSpinner" class="d-none">
+            <span class="spinner-border spinner-border-sm me-2"></span>Signing in...
+          </span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Don't have an account? <a href="{{ url_for('auth.register') }}" class="auth-link">Sign up</a>
+      </div>
+    </div>
+
+    <!-- Back to home -->
+    <a href="{{ url_for('auth.home') }}" class="back-home">
+      <i class="fas fa-arrow-left me-2"></i>Back to Home
+    </a>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    function togglePwd(id, iconId) {
+      const inp = document.getElementById(id);
+      const icon = document.getElementById(iconId);
+      if (inp.type === 'password') { inp.type='text'; icon.className='fas fa-eye-slash'; }
+      else { inp.type='password'; icon.className='fas fa-eye'; }
+    }
+    document.getElementById('loginForm').addEventListener('submit', function() {
+      document.getElementById('loginBtnText').classList.add('d-none');
+      document.getElementById('loginSpinner').classList.remove('d-none');
+    });
+
+    // ── Animated Canvas Particle Background ──
+    (function() {
+      const canvas = document.getElementById('particleCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      
+      let width = canvas.width = window.innerWidth;
+      let height = canvas.height = window.innerHeight;
+      
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      });
+      
+      const numParticles = 40;
+      const particles = [];
+      
+      for (let i = 0; i < numParticles; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          r: Math.random() * 2 + 1
+        });
+      }
+      
+      function draw() {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = 'rgba(66, 165, 245, 0.35)';
+        ctx.strokeStyle = 'rgba(66, 165, 245, 0.04)';
+        
+        for (let i = 0; i < numParticles; i++) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          
+          if (p.x < 0 || p.x > width) p.vx *= -1;
+          if (p.y < 0 || p.y > height) p.vy *= -1;
+          
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+          
+          for (let j = i + 1; j < numParticles; j++) {
+            const p2 = particles[j];
+            const dx = p.x - p2.x;
+            const dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 110) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
+{% endblock %}

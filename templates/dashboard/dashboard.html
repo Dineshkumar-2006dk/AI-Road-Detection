@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}<i class="fas fa-gauge-high me-2"></i>Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row g-4 mb-4" id="statsRow">
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#1565c0,#0288d1);">
+        <i class="fas fa-camera"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-number" id="statTotal">—</div>
+        <div class="stat-label">Total Detections</div>
+      </div>
+      <div class="stat-trend up"><i class="fas fa-arrow-trend-up"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#2e7d32,#388e3c);">
+        <i class="fas fa-calendar-day"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-number" id="statToday">—</div>
+        <div class="stat-label">Today's Scans</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#e65100,#f57c00);">
+        <i class="fas fa-circle-exclamation"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-number" id="statCritical">—</div>
+        <div class="stat-label">Critical Roads</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#6a1b9a,#8e24aa);">
+        <i class="fas fa-percent"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-number" id="statConf">—</div>
+        <div class="stat-label">Avg Confidence</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Action Cards -->
+<div class="row g-4 mb-4">
+  <div class="col-md-6 col-lg-3">
+    <a href="{{ url_for('detection.image_detection') }}" class="action-card">
+      <div class="action-icon" style="background:rgba(21,101,192,.2);"><i class="fas fa-image" style="color:#42a5f5;"></i></div>
+      <div class="action-text">
+        <div class="action-title">Image Detection</div>
+        <div class="action-sub">Upload & analyze road images</div>
+      </div>
+      <i class="fas fa-arrow-right action-arrow"></i>
+    </a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a href="{{ url_for('detection.camera_detection') }}" class="action-card">
+      <div class="action-icon" style="background:rgba(198,40,40,.2);"><i class="fas fa-video" style="color:#ef5350;"></i></div>
+      <div class="action-text">
+        <div class="action-title">Live Camera</div>
+        <div class="action-sub">Real-time webcam detection</div>
+      </div>
+      <i class="fas fa-arrow-right action-arrow"></i>
+    </a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a href="{{ url_for('map.road_map') }}" class="action-card">
+      <div class="action-icon" style="background:rgba(2,136,209,.2);"><i class="fas fa-map-location-dot" style="color:#29b6f6;"></i></div>
+      <div class="action-text">
+        <div class="action-title">Road Map</div>
+        <div class="action-sub">View all detection locations</div>
+      </div>
+      <i class="fas fa-arrow-right action-arrow"></i>
+    </a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a href="{{ url_for('history.history') }}" class="action-card">
+      <div class="action-icon" style="background:rgba(123,31,162,.2);"><i class="fas fa-clock-rotate-left" style="color:#ce93d8;"></i></div>
+      <div class="action-text">
+        <div class="action-title">History</div>
+        <div class="action-sub">Browse detection history</div>
+      </div>
+      <i class="fas fa-arrow-right action-arrow"></i>
+    </a>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+  <!-- Detection Trend -->
+  <div class="col-lg-8">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Detection Trend</div>
+          <div class="chart-sub">Last 7 days</div>
+        </div>
+        <div class="chart-badge">Weekly</div>
+      </div>
+      <div class="chart-body">
+        <canvas id="trendChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+  <!-- Road Condition Pie -->
+  <div class="col-lg-4">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Road Conditions</div>
+          <div class="chart-sub">Distribution</div>
+        </div>
+      </div>
+      <div class="chart-body">
+        <canvas id="conditionChart" height="160"></canvas>
+        <div id="conditionLegend" class="chart-legend"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Top Damage Types Bar Chart -->
+  <div class="col-lg-7">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Top Damage Types</div>
+          <div class="chart-sub">By detection count</div>
+        </div>
+      </div>
+      <div class="chart-body">
+        <canvas id="damageChart" height="130"></canvas>
+      </div>
+    </div>
+  </div>
+  <!-- Severity Pie -->
+  <div class="col-lg-5">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Severity Breakdown</div>
+          <div class="chart-sub">Damage severity levels</div>
+        </div>
+      </div>
+      <div class="chart-body">
+        <canvas id="severityChart" height="160"></canvas>
+        <div id="severityLegend" class="chart-legend"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Detections Table -->
+<div class="chart-card">
+  <div class="chart-card-header">
+    <div>
+      <div class="chart-title">Recent Detections</div>
+      <div class="chart-sub">Latest 5 analyses</div>
+    </div>
+    <a href="{{ url_for('history.history') }}" class="btn btn-sm" style="background:rgba(33,150,243,.15);color:#42a5f5;border:1px solid rgba(33,150,243,.3);border-radius:8px;padding:6px 16px;">View All</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table rg-table">
+      <thead>
+        <tr><th>#</th><th>Date/Time</th><th>Condition</th><th>Severity</th><th>Damage</th><th>Confidence</th></tr>
+      </thead>
+      <tbody id="recentTable">
+        <tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

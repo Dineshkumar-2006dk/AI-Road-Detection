@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Live Camera{% endblock %}
+{% block page_title %}<i class="fas fa-video me-2"></i>Live Camera Detection{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Camera Feed -->
+  <div class="col-lg-7">
+    <div class="rg-card">
+      <div class="rg-card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-video me-2" style="color:#ef5350;"></i>Camera Feed</span>
+        <div class="d-flex align-items-center gap-2">
+          <div class="live-dot d-none" id="liveDot"></div>
+          <span class="fps-badge" id="fpsBadge">— FPS</span>
+        </div>
+      </div>
+      <div class="rg-card-body p-0" style="position:relative;">
+        <!-- Video -->
+        <video id="videoFeed" autoplay muted playsinline
+               style="width:100%;border-radius:0 0 16px 16px;background:#0a0f1e;min-height:300px;display:block;"></video>
+        <!-- Canvas overlay for annotations -->
+        <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+        <!-- Idle overlay -->
+        <div id="cameraIdle" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,15,30,.95);border-radius:0 0 16px 16px;">
+          <i class="fas fa-video-slash" style="font-size:3rem;color:#455a64;"></i>
+          <p style="color:#546e7a;margin-top:16px;">Camera not started</p>
+          <button class="btn-detect mt-2" onclick="startCamera()" id="startCamBtn">
+            <i class="fas fa-play me-2"></i>Start Camera
+          </button>
+        </div>
+        <!-- Detection overlay badge -->
+        <div id="condOverlay" class="cam-condition-overlay d-none"></div>
+      </div>
+    </div>
+
+    <!-- Camera Controls -->
+    <div class="rg-card mt-4">
+      <div class="rg-card-body">
+        <!-- Camera Selector -->
+        <div class="mb-4 text-start">
+          <label for="cameraSelect" style="color:#78909c;font-size:12px;font-weight:600;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
+            <i class="fas fa-video me-1" style="color:#42a5f5;"></i>Select Camera Input
+          </label>
+          <select id="cameraSelect" class="form-select" style="background:rgba(255,255,255,0.03);color:#fff;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 14px;font-size:14px;outline:none;width:100%;transition:all .3s ease;">
+            <option value="">Detecting available cameras...</option>
+          </select>
+        </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-center">
+          <button id="startBtn" class="btn-cam-control success" onclick="startCamera()">
+            <i class="fas fa-play me-2"></i>Start Camera
+          </button>
+          <button id="stopBtn" class="btn-cam-control danger d-none" onclick="stopCamera()">
+            <i class="fas fa-stop me-2"></i>Stop Camera
+          </button>
+          <button id="captureBtn" class="btn-cam-control primary d-none" onclick="captureFrame()">
+            <i class="fas fa-camera me-2"></i>Capture Frame
+          </button>
+          <button id="autoDetectBtn" class="btn-cam-control warning d-none" onclick="toggleAutoDetect()">
+            <i class="fas fa-rotate me-2"></i>Auto Detect: OFF
+          </button>
+        </div>
+        <div class="mt-3 text-center">
+          <label style="color:#78909c;font-size:13px;">Detection Interval:</label>
+          <input type="range" id="intervalSlider" min="500" max="5000" value="1500" step="500"
+                 class="rg-range" oninput="updateInterval(this.value)">
+          <span id="intervalLabel" style="color:#42a5f5;font-size:13px;">1.5s</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Stats -->
+  <div class="col-lg-5">
+    <div class="rg-card mb-4">
+      <div class="rg-card-header"><i class="fas fa-chart-line me-2"></i>Live Stats</div>
+      <div class="rg-card-body">
+        <div class="live-stat-row">
+          <div class="live-stat-item">
+            <div class="live-stat-val" id="lsTotalDetect">0</div>
+            <div class="live-stat-label">Total Detections</div>
+          </div>
+          <div class="live-stat-item">
+            <div class="live-stat-val" id="lsFrameCount">0</div>
+            <div class="live-stat-label">Frames Analyzed</div>
+          </div>
+          <div class="live-stat-item">
+            <div class="live-stat-val" id="lsAvgConf">—</div>
+            <div class="live-stat-label">Avg Confidence</div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div style="color:#78909c;font-size:12px;margin-bottom:8px;">CURRENT ROAD CONDITION</div>
+          <div id="liveCondition" class="live-condition-bar">
+            <span class="live-condition-text">—</span>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div style="color:#78909c;font-size:12px;margin-bottom:8px;">CONFIDENCE METER</div>
+          <div class="confidence-meter-track">
+            <div class="confidence-meter-fill" id="confMeter" style="width:0%;"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <span style="font-size:11px;color:#546e7a;">0%</span>
+            <span style="font-size:11px;color:#42a5f5;" id="confMeterVal">0%</span>
+            <span style="font-size:11px;color:#546e7a;">100%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Result Image -->
+    <div class="rg-card mb-4">
+      <div class="rg-card-header"><i class="fas fa-eye me-2"></i>Latest Detection Result</div>
+      <div class="rg-card-body p-0">
+        <div id="liveResultWrap" style="min-height:160px;display:flex;align-items:center;justify-content:center;">
+          <p style="color:#455a64;font-size:14px;">No frame analyzed yet</p>
+        </div>
+        <img id="liveResultImg" class="d-none" style="width:100%;border-radius:0 0 12px 12px;" alt="Live Result">
+      </div>
+    </div>
+
+    <!-- Detected Damages Live Log -->
+    <div class="rg-card">
+      <div class="rg-card-header d-flex justify-content-between">
+        <span><i class="fas fa-list me-2"></i>Detection Log</span>
+        <button class="btn-icon-sm" onclick="clearLog()"><i class="fas fa-trash"></i></button>
+      </div>
+      <div class="rg-card-body p-0">
+        <div id="detectionLog" style="max-height:220px;overflow-y:auto;padding:8px 12px;">
+          <p style="color:#455a64;font-size:13px;text-align:center;padding:20px 0;">No detections yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+{% endblock %}

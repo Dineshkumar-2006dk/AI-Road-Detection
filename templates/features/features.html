@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Features{% endblock %}
+{% block page_title %}<i class="fas fa-star me-2"></i>System Features{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  {% set feats = [
+    ("fa-magnifying-glass-chart","Road Detection","Automatically detect and classify road conditions — Good, Moderate, Poor, or Critical — using deep learning computer vision models trained on real road datasets.","#1565c0"),
+    ("fa-circle-exclamation","Pothole Detection","Precise pothole localization with bounding boxes, confidence scores, and size estimation. Potholes are classified by severity based on area and depth.","#c62828"),
+    ("fa-grip-lines","Crack Detection","Detect 4 types of cracks: Longitudinal, Transverse, Alligator (fatigue), and general surface cracks. Each has an independent confidence score.","#0277bd"),
+    ("fa-road","Surface Damage","Analyze road surface texture, identify deteriorating patches, loose gravel, and road depressions before they become serious hazards.","#2e7d32"),
+    ("fa-triangle-exclamation","Road Edge Failure","Detect road edge failures, crumbling shoulders, and road depressions that pose danger to vehicles, especially in rural areas.","#e65100"),
+    ("fa-location-dot","GPS Tracking","Automatic GPS capture via browser geolocation API. Every detection is tagged with latitude, longitude, timestamp, address, and a Google Maps link.","#6a1b9a"),
+    ("fa-volume-high","Voice Alert","Instant voice alerts in English and Tamil using pyttsx3 (offline TTS). Alerts include: 'Pothole detected', 'Reduce speed', 'Severe road damage'.","#00695c"),
+    ("fa-envelope","Email Reporting","Send full HTML reports with embedded detection images via SMTP. Report includes damage type, severity, GPS coordinates, and prediction time.","#1565c0"),
+    ("fa-clock-rotate-left","Detection History","Every detection is stored in SQLite with full metadata. Search, filter by condition/severity, delete, and export to CSV or Excel.","#4527a0"),
+    ("fa-chart-bar","Statistics Dashboard","Interactive Chart.js dashboards: detection trends, road condition distribution, damage type frequency, severity breakdown.","#0277bd"),
+    ("fa-brain","AI Analytics","YOLOv8 deep learning model with multi-class detection, data augmentation, and balanced dataset training. Targets 95%+ accuracy.","#ad1457"),
+    ("fa-gauge","Severity Prediction","Automatic severity scoring (Low/Medium/High/Critical) based on damage class weight, confidence, bounding box area, and damage count.","#e65100"),
+    ("fa-map","Interactive Map","Folium-powered interactive map with color-coded markers for all GPS-tagged detections. Click markers for full detection details.","#00695c"),
+    ("fa-user-shield","Admin Panel","Full admin panel with user management, detection history, audit logs, model information, and system-wide statistics.","#4527a0"),
+    ("fa-moon","Dark / Light Mode","Toggle between professional dark glassmorphism mode and clean light mode. Theme preference is saved per user.","#1565c0"),
+    ("fa-file-pdf","PDF Reports","Generate professional PDF reports with ReportLab for individual detections including charts, images, and location data.","#c62828"),
+  ] %}
+  {% for icon, title, desc, color in feats %}
+  <div class="col-md-6 col-xl-4">
+    <div class="feat-detail-card" style="--feat-color:{{ color }};">
+      <div class="feat-detail-icon"><i class="fas {{ icon }}"></i></div>
+      <h5 class="feat-detail-title">{{ title }}</h5>
+      <p class="feat-detail-desc">{{ desc }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Damage Classes -->
+<div class="rg-card mt-5">
+  <div class="rg-card-header"><i class="fas fa-tags me-2"></i>AI Detection Classes</div>
+  <div class="rg-card-body">
+    <div class="row g-3">
+      {% set classes = [
+        ("Pothole","#f44336"),("Crack","#ff9800"),("Longitudinal Crack","#ff5722"),
+        ("Transverse Crack","#e91e63"),("Alligator Crack","#9c27b0"),
+        ("Surface Damage","#2196f3"),("Road Edge Failure","#00bcd4"),
+        ("Road Depression","#009688"),("Patch Failure","#4caf50"),
+        ("Water Logging","#03a9f4"),("Loose Gravel","#8bc34a"),
+        ("Normal Road","#66bb6a"),("Shadow","#607d8b"),
+        ("Manhole Cover","#78909c"),("Speed Breaker","#ffc107"),("Road Marking","#ffeb3b"),
+      ] %}
+      {% for cls, color in classes %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="class-chip" style="border-color:{{ color }}40;background:{{ color }}10;">
+          <div style="width:10px;height:10px;border-radius:50%;background:{{ color }};flex-shrink:0;"></div>
+          <span style="color:#e0e0e0;font-size:13px;">{{ cls }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

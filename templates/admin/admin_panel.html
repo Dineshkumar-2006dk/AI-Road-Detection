@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block page_title %}<i class="fas fa-user-shield me-2"></i>Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Admin Stats -->
+<div class="row g-4 mb-4" id="adminStats">
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#1565c0,#0288d1);"><i class="fas fa-users"></i></div>
+      <div class="stat-body">
+        <div class="stat-number">{{ total_users }}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#2e7d32,#388e3c);"><i class="fas fa-camera"></i></div>
+      <div class="stat-body">
+        <div class="stat-number">{{ total_detections }}</div>
+        <div class="stat-label">Total Detections</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#c62828,#e53935);"><i class="fas fa-road-barrier"></i></div>
+      <div class="stat-body">
+        <div class="stat-number" id="adminCritical">—</div>
+        <div class="stat-label">Critical Roads</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:linear-gradient(135deg,#6a1b9a,#8e24aa);"><i class="fas fa-envelope-circle-check"></i></div>
+      <div class="stat-body">
+        <div class="stat-number" id="adminEmails">—</div>
+        <div class="stat-label">Emails Sent</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Quick Actions -->
+  <div class="col-lg-4">
+    <div class="rg-card mb-4">
+      <div class="rg-card-header"><i class="fas fa-bolt me-2"></i>Quick Actions</div>
+      <div class="rg-card-body d-flex flex-column gap-2">
+        <a href="{{ url_for('admin.admin_users') }}" class="btn-action-full">
+          <i class="fas fa-users-cog me-2"></i>Manage Users
+        </a>
+        <a href="{{ url_for('history.export_excel') }}" class="btn-action-full secondary" download>
+          <i class="fas fa-file-excel me-2"></i>Export All (Excel)
+        </a>
+        <a href="{{ url_for('history.export_csv') }}" class="btn-action-full secondary" download>
+          <i class="fas fa-file-csv me-2"></i>Export All (CSV)
+        </a>
+        <button class="btn-action-full danger" onclick="clearAllDetections()">
+          <i class="fas fa-trash-alt me-2"></i>Clear All Detections
+        </button>
+      </div>
+    </div>
+
+    <!-- Clear Activity Logs -->
+    <div class="rg-card mb-4">
+      <div class="rg-card-header"><i class="fas fa-history me-2"></i>Clear Activity Logs</div>
+      <div class="rg-card-body d-flex flex-column gap-2">
+        <button class="btn-action-full secondary text-start" onclick="clearLogs('login')">
+          <i class="fas fa-sign-in-alt me-2 text-primary"></i>Delete Login History
+        </button>
+        <button class="btn-action-full secondary text-start" onclick="clearLogs('logout')">
+          <i class="fas fa-sign-out-alt me-2 text-warning"></i>Delete Logout History
+        </button>
+        <button class="btn-action-full danger text-start" onclick="clearLogs('all')">
+          <i class="fas fa-trash-can me-2"></i>Delete All Activity History
+        </button>
+      </div>
+    </div>
+
+    <!-- Model Info -->
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-brain me-2"></i>Model Status</div>
+      <div class="rg-card-body">
+        <div class="model-info-row"><span>Architecture:</span><span class="model-val">YOLOv8n / YOLOv8s</span></div>
+        <div class="model-info-row"><span>Classes:</span><span class="model-val">16 classes</span></div>
+        <div class="model-info-row"><span>Target mAP50:</span><span class="model-val text-success">≥ 0.95</span></div>
+        <div class="model-info-row"><span>Weights File:</span><span class="model-val">weights/best.pt</span></div>
+        <div class="model-info-row">
+          <span>Status:</span>
+          <span class="model-val" style="color:#ffa726;">
+            <i class="fas fa-circle-exclamation me-1"></i>Simulation Mode
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Logs -->
+  <div class="col-lg-8">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-list-alt me-2"></i>Recent Activity Log</div>
+      <div class="table-responsive">
+        <table class="table rg-table">
+          <thead>
+            <tr><th>#</th><th>User</th><th>Action</th><th>Details</th><th>IP</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for log in recent_logs %}
+            <tr>
+              <td><span style="color:#546e7a;">#{{ log.id }}</span></td>
+              <td>
+                {% if log.user %}
+                  <span class="user-tag">{{ log.user.username }}</span>
+                {% else %}
+                  <span style="color:#455a64;">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="action-tag action-{{ log.action.split('_')[0] }}">{{ log.action }}</span>
+              </td>
+              <td style="color:#78909c;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {{ log.details or '—' }}
+              </td>
+              <td style="color:#546e7a;font-size:12px;">{{ log.ip_address or '—' }}</td>
+              <td style="color:#546e7a;font-size:12px;white-space:nowrap;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">No activity logs yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/admin/api/stats').then(r=>r.json()).then(d => {
+  document.getElementById('adminCritical').textContent = d.critical_roads;
+  document.getElementById('adminEmails').textContent   = d.emails_sent;
+});
+
+async function clearAllDetections() {
+  if (!confirm('⚠️ This will permanently delete ALL detection records. Are you sure?')) return;
+  const res = await fetch('/admin/api/detections/clear', {
+    method: 'DELETE',
+    headers: {'X-CSRFToken': getCsrfToken()}
+  });
+  const data = await res.json();
+  if (data.success) { showToast('All detections cleared','success'); setTimeout(()=>location.reload(),1500); }
+}
+
+async function clearLogs(type) {
+  let promptMsg = 'Are you sure you want to delete all activity logs?';
+  let apiPath = '/admin/api/logs/delete/all';
+  if (type === 'login') {
+    promptMsg = 'Are you sure you want to delete all login logs?';
+    apiPath = '/admin/api/logs/delete/login';
+  } else if (type === 'logout') {
+    promptMsg = 'Are you sure you want to delete all logout logs?';
+    apiPath = '/admin/api/logs/delete/logout';
+  }
+  
+  if (!confirm('⚠️ ' + promptMsg)) return;
+  
+  try {
+    const res = await fetch(apiPath, {
+      method: 'DELETE',
+      headers: {'X-CSRFToken': getCsrfToken()}
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast(data.error || 'Failed to clear logs', 'danger');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to clear logs due to connection error', 'danger');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Register – RoadGuard AI{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/auth.css') }}" rel="stylesheet">
+<style>
+  .auth-container {
+    animation: auth-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes auth-fade-in {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
+
+{% block body_class %}auth-body{% endblock %}
+
+{% block auth_content %}
+  <div class="auth-bg">
+    <div class="auth-orb orb-1"></div>
+    <div class="auth-orb orb-2"></div>
+    <div class="auth-orb orb-3"></div>
+  </div>
+  <div class="auth-container">
+    <div class="auth-brand">
+      <div class="brand-icon-lg"><i class="fas fa-shield-road"></i></div>
+      <h1 class="brand-title">RoadGuard <span>AI</span></h1>
+      <p class="brand-tagline">Create Your Account</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Get Started</h2>
+        <p>Join the road monitoring network</p>
+      </div>
+      <form method="POST" action="{{ url_for('auth.register') }}" id="regForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group-rg">
+          <label class="form-label-rg"><i class="fas fa-user"></i> Username</label>
+          <div class="input-wrapper">
+            <input type="text" name="username" class="form-input-rg" placeholder="Choose a username" required minlength="3">
+            <div class="input-focus-line"></div>
+          </div>
+        </div>
+        <div class="form-group-rg">
+          <label class="form-label-rg"><i class="fas fa-envelope"></i> Email Address</label>
+          <div class="input-wrapper">
+            <input type="email" name="email" class="form-input-rg" placeholder="Enter your email" required>
+            <div class="input-focus-line"></div>
+          </div>
+        </div>
+        <div class="form-group-rg">
+          <label class="form-label-rg"><i class="fas fa-lock"></i> Password</label>
+          <div class="input-wrapper">
+            <input type="password" name="password" id="pwd" class="form-input-rg" placeholder="Min 6 characters" required minlength="6">
+            <button type="button" class="pwd-toggle" onclick="togglePwd('pwd','e1')"><i class="fas fa-eye" id="e1"></i></button>
+            <div class="input-focus-line"></div>
+          </div>
+        </div>
+        <div class="form-group-rg">
+          <label class="form-label-rg"><i class="fas fa-lock"></i> Confirm Password</label>
+          <div class="input-wrapper">
+            <input type="password" name="confirm_password" id="cpwd" class="form-input-rg" placeholder="Repeat password" required>
+            <button type="button" class="pwd-toggle" onclick="togglePwd('cpwd','e2')"><i class="fas fa-eye" id="e2"></i></button>
+            <div class="input-focus-line"></div>
+          </div>
+          <div id="pwdMatch" style="font-size:12px;margin-top:4px;"></div>
+        </div>
+        <button type="submit" class="btn-auth-primary">
+          <i class="fas fa-user-plus me-2"></i>Create Account
+        </button>
+      </form>
+      <div class="auth-footer">Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link">Sign in</a></div>
+    </div>
+    <a href="{{ url_for('auth.home') }}" class="back-home"><i class="fas fa-arrow-left me-2"></i>Back to Home</a>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    function togglePwd(id, iconId) {
+      const inp=document.getElementById(id),icon=document.getElementById(iconId);
+      inp.type=inp.type==='password'?'text':'password';
+      icon.className=inp.type==='password'?'fas fa-eye':'fas fa-eye-slash';
+    }
+    document.getElementById('cpwd').addEventListener('input',function(){
+      const m=document.getElementById('pwdMatch');
+      const match=this.value===document.getElementById('pwd').value;
+      m.innerHTML=match?'<span style="color:#66bb6a;"><i class="fas fa-check me-1"></i>Passwords match</span>':'<span style="color:#ef5350;"><i class="fas fa-times me-1"></i>Passwords do not match</span>';
+    });
+  </script>
+{% endblock %}
