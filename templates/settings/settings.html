@@ -127,6 +127,51 @@
     </div>
   </div>
 
+  <!-- Twilio SMS Settings -->
+  <div class="col-lg-6">
+    <div class="rg-card">
+      <div class="rg-card-header"><i class="fas fa-comment-sms me-2"></i>Twilio SMS Alerts</div>
+      <div class="rg-card-body">
+        <div class="setting-item">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <div class="setting-label-main">Auto SMS Alerts</div>
+              <div class="setting-desc">Send Twilio SMS alerts for critical road hazards</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="smsToggle" {% if settings.sms_alerts %}checked{% endif %}>
+              <label for="smsToggle"></label>
+            </div>
+          </div>
+          <div class="row g-2 mt-2">
+            <div class="col-6">
+              <label class="form-label-sm">Twilio Account SID</label>
+              <input type="text" id="smsSid" class="form-input-sm" placeholder="ACXXXXXXXXXXXXXXXXXXXX"
+                     value="{{ settings.sms_sid or '' }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Twilio Auth Token</label>
+              <input type="password" id="smsToken" class="form-input-sm" placeholder="Auth Token"
+                     value="{{ settings.sms_token or '' }}">
+            </div>
+          </div>
+          <div class="row g-2 mt-2">
+            <div class="col-6">
+              <label class="form-label-sm">Sender Number (From)</label>
+              <input type="text" id="smsFrom" class="form-input-sm" placeholder="+1XXXXXXXXXX"
+                     value="{{ settings.sms_from or '' }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Recipient Number (To)</label>
+              <input type="text" id="smsTo" class="form-input-sm" placeholder="+91XXXXXXXXXX"
+                     value="{{ settings.sms_to or '' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Camera Settings -->
   <div class="col-lg-6">
     <div class="rg-card">
@@ -209,6 +254,11 @@ async function saveSettings() {
     smtp_port:          parseInt(document.getElementById('smtpPort').value),
     smtp_username:      document.getElementById('smtpUsername').value,
     smtp_password:      document.getElementById('smtpPassword').value,
+    sms_alerts:         document.getElementById('smsToggle').checked,
+    sms_sid:            document.getElementById('smsSid').value,
+    sms_token:          document.getElementById('smsToken').value,
+    sms_from:           document.getElementById('smsFrom').value,
+    sms_to:             document.getElementById('smsTo').value,
   };
   const res = await fetch('/settings/api/save', {
     method: 'POST',

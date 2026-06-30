@@ -32,16 +32,29 @@ async function loadDashboard() {
 // ── Stats cards ───────────────────────────────────────────────────────────────
 function renderStats(data) {
   const map = {
-    statTotal:    data.total_detections,
-    statToday:    data.today_detections,
-    statCritical: data.critical_count,
-    statConf:     null,
+    statTotal:         data.total_detections,
+    statToday:         data.today_detections,
+    statCritical:      data.critical_count,
+    statQualityScore:  null,
   };
   Object.entries(map).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (!el) return;
-    if (id === 'statConf') {
-      el.textContent = data.avg_confidence + '%';
+    if (id === 'statQualityScore') {
+      const score = data.road_quality_score ?? 100.0;
+      el.textContent = score.toFixed(1) + '%';
+      
+      const gradeEl = document.getElementById('statQualityGrade');
+      if (gradeEl) {
+        gradeEl.textContent = 'Grade ' + (data.road_quality_grade || 'A');
+        gradeEl.style.display = 'inline-block';
+        
+        const colors = { A: '#66bb6a', B: '#29b6f6', C: '#ffca28', D: '#ffa726', F: '#ef5350' };
+        const color = colors[data.road_quality_grade] || '#66bb6a';
+        gradeEl.style.borderColor = color + '44';
+        gradeEl.style.color = color;
+        gradeEl.style.background = color + '15';
+      }
     } else {
       animateCounter(el, val || 0);
     }

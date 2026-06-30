@@ -48,6 +48,8 @@ def _save_detection(result: dict, original_name: str, lat=None, lon=None,
             avg_confidence = result["avg_confidence"],
             detection_count= result["detection_count"],
             prediction_time= result["prediction_time"],
+            max_depth_cm   = result.get("max_depth_cm", 0.0),
+            total_volume_liters = result.get("total_volume_liters", 0.0),
             latitude       = lat,
             longitude      = lon,
             location_name  = location_name,
@@ -65,6 +67,30 @@ def _save_detection(result: dict, original_name: str, lat=None, lon=None,
         db.session.rollback()
         current_app.logger.exception("[DB] Database failure while saving detection")
         raise RuntimeError(f"Database failure: {type(exc).__name__}: {exc}") from exc
+
+
+def _trigger_sms_alert(result, settings, lat, lon, location_name):
+    if not settings or not settings.sms_alerts:
+        return
+    if result.get("severity") != "Critical":
+        return
+
+    from utils.sms_utils import send_sms_alert
+
+    is_ta = (settings.language == "ta")
+    loc = location_name or ("தென்சிறுவளூர்" if is_ta else "Thensiruvalur")
+    if is_ta:
+        msg = f"⚠️ எச்சரிக்கை (RoadGuard AI): {loc} பகுதியில் ஆபத்தான சாலைப் பழுது (Critical Pothole) கண்டறியப்பட்டுள்ளது.\n"
+        if lat is not None and lon is not None:
+            msg += f"📍 அமைவிடம்: {lat:.5f}, {lon:.5f}\n"
+            msg += f"🗺️ கூகுள் மேப்: https://maps.google.com/?q={lat},{lon}"
+    else:
+        msg = f"⚠️ ALERT (RoadGuard AI): Critical road damage detected at {loc}.\n"
+        if lat is not None and lon is not None:
+            msg += f"📍 Location: {lat:.5f}, {lon:.5f}\n"
+            msg += f"🗺️ Google Maps: https://maps.google.com/?q={lat},{lon}"
+
+    send_sms_alert(msg, settings)
 
 
 # ── Image Detection Page ──────────────────────────────────────────────────────
@@ -120,18 +146,24 @@ def api_detect_image():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+    # Retrieve user settings
+    settings = None
+    if current_user.is_authenticated:
+        settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+
     # Voice alert
     if result["detection_count"] > 0:
         speak_alert(result["damage_types"][0] if result["damage_types"] else result["road_condition"].lower())
         current_app.logger.info("[Voice] Voice played")
         print("[Voice] Voice played")
 
+    # Trigger SMS alert
+    if settings:
+        _trigger_sms_alert(result, settings, lat, lon, location_name)
+
     # Send email if requested
     email_status = {"sent": False, "message": ""}
     recipient = sanitize_email(request.form.get("email", ""))
-    settings = None
-    if current_user.is_authenticated:
-        settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     if not recipient and settings:
         if settings.email_alerts and settings.notification_email:
             recipient = sanitize_email(settings.notification_email)
@@ -289,23 +321,25 @@ def api_detect_frame():
             # Auto email alert for live camera detection
             if current_user.is_authenticated:
                 settings = UserSettings.query.filter_by(user_id=current_user.id).first()
-                if settings and settings.email_alerts and settings.notification_email:
-                    recipient = sanitize_email(settings.notification_email)
-                    if recipient:
-                        result_path = result["result_image_path"]
-                        email_result = send_detection_report(recipient, {
-                            **result,
-                            "latitude":      lat,
-                            "longitude":     lon,
-                            "location_name": location_name,
-                            "maps_link":     maps_link_val,
-                        }, result_path, user_settings=settings)
-                        email_status = {"sent": email_result["success"], "message": email_result["message"]}
-                        if email_result["success"]:
-                            det.email_sent      = True
-                            det.email_recipient = recipient
-                            db.session.commit()
-                            current_app.logger.info("[Email] Auto Email sent for live camera: %s", recipient)
+                if settings:
+                    _trigger_sms_alert(result, settings, lat, lon, location_name)
+                    if settings.email_alerts and settings.notification_email:
+                        recipient = sanitize_email(settings.notification_email)
+                        if recipient:
+                            result_path = result["result_image_path"]
+                            email_result = send_detection_report(recipient, {
+                                **result,
+                                "latitude":      lat,
+                                "longitude":     lon,
+                                "location_name": location_name,
+                                "maps_link":     maps_link_val,
+                            }, result_path, user_settings=settings)
+                            email_status = {"sent": email_result["success"], "message": email_result["message"]}
+                            if email_result["success"]:
+                                det.email_sent      = True
+                                det.email_recipient = recipient
+                                db.session.commit()
+                                current_app.logger.info("[Email] Auto Email sent for live camera: %s", recipient)
         except Exception as exc:
             return jsonify({"success": False, "error": str(exc)}), 500
 

@@ -129,6 +129,41 @@ def run_inference(image_path: str, conf_threshold: float = 0.40,
 
     prediction_time = time.time() - started
 
+    # Calculate depth and volume for each detection
+    for d in damage_detections:
+        x1, y1, x2, y2 = d["bbox"]
+        dw = x2 - x1
+        dh = y2 - y1
+        w_cm = dw * 0.15
+        h_cm = dh * 0.15
+        area_sq_cm = w_cm * h_cm
+        
+        cls = d["class_name"].lower()
+        if "pothole" in cls:
+            depth = 3.0 + (area_sq_cm ** 0.5) * 0.25
+            depth = np.clip(depth, 4.0, 18.0)
+            vol = (area_sq_cm * depth) / 1000.0
+        elif "depression" in cls:
+            depth = 2.0 + (area_sq_cm ** 0.5) * 0.15
+            depth = np.clip(depth, 3.0, 12.0)
+            vol = (area_sq_cm * depth) / 1000.0
+        elif "crack" in cls:
+            depth = 0.5 + (area_sq_cm ** 0.1) * 0.1
+            depth = np.clip(depth, 0.5, 2.5)
+            vol = ((area_sq_cm * 0.2) * depth) / 1000.0
+        else:
+            depth = 1.0 + (area_sq_cm ** 0.2) * 0.1
+            depth = np.clip(depth, 1.0, 5.0)
+            vol = (area_sq_cm * depth) / 1000.0
+            
+        d["depth_cm"] = round(float(depth), 1)
+        d["volume_liters"] = round(float(vol), 2)
+
+    depths = [d["depth_cm"] for d in damage_detections]
+    volumes = [d["volume_liters"] for d in damage_detections]
+    max_depth = max(depths) if depths else 0.0
+    total_volume = sum(volumes) if volumes else 0.0
+
     from utils.severity import compute_road_condition, compute_severity
 
     confidences  = [d["confidence"] for d in damage_detections]
@@ -157,6 +192,8 @@ def run_inference(image_path: str, conf_threshold: float = 0.40,
         "detection_count":   len(damage_detections),
         "prediction_time":   prediction_time,
         "simulation_mode":   sim,
+        "max_depth_cm":      max_depth,
+        "total_volume_liters": round(total_volume, 2),
         "message": ("No road damage detected." if not damage_detections
                     else f"{'Simulation: ' if sim else ''}{len(damage_detections)} damage area(s) detected."),
     }

@@ -257,6 +257,9 @@ function renderLiveResult(data) {
     if (txt) { txt.textContent = cond; txt.style.color = col; }
   }
 
+  setEl('liveMaxDepth', (data.max_depth_cm ?? 0).toFixed(1) + ' cm');
+  setEl('livePatchVol', (data.total_volume_liters ?? 0).toFixed(2) + ' L');
+
   // Overlay badge
   const overlay = document.getElementById('condOverlay');
   if (overlay) {

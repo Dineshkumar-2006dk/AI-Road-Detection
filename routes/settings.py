@@ -42,6 +42,12 @@ def api_save():
     s.smtp_username      = data.get("smtp_username",      s.smtp_username)
     s.smtp_password      = data.get("smtp_password",      s.smtp_password)
 
+    s.sms_alerts         = bool(data.get("sms_alerts",    s.sms_alerts))
+    s.sms_sid            = data.get("sms_sid",            s.sms_sid)
+    s.sms_token          = data.get("sms_token",          s.sms_token)
+    s.sms_from           = data.get("sms_from",           s.sms_from)
+    s.sms_to             = data.get("sms_to",             s.sms_to)
+
     db.session.commit()
     return jsonify({"success": True, "settings": s.to_dict()})
 

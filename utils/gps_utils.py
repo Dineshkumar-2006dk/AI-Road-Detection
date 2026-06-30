@@ -106,6 +106,20 @@ def build_folium_map(detections: list) -> str:
     for layer in layers.values():
         layer.add_to(fmap)
 
+    # ── Togglable Damage Heatmap Layer ──────────────────────────────────────────
+    try:
+        from folium.plugins import HeatMap
+        heat_data = []
+        for det in valid:
+            condition = det.road_condition or "Poor"
+            w = 1.0 if condition == "Critical" else (0.7 if condition == "Poor" else (0.4 if condition == "Moderate" else 0.1))
+            heat_data.append([det.latitude, det.longitude, w])
+        if heat_data:
+            HeatMap(heat_data, name="Damage Heatmap", show=False, radius=18, blur=12, min_opacity=0.4).add_to(fmap)
+    except Exception as e:
+        if 'logger' in locals() or 'current_app' in locals():
+            current_app.logger.error(f"Failed to add HeatMap layer: {e}")
+
     folium.LayerControl(collapsed=False).add_to(fmap)
 
     # Minimap

@@ -32,6 +32,13 @@ class UserSettings(db.Model):
     smtp_username     = db.Column(db.String(120), nullable=True)
     smtp_password     = db.Column(db.String(120), nullable=True)
 
+    # Twilio SMS Configuration
+    sms_alerts        = db.Column(db.Boolean,     default=False)
+    sms_sid           = db.Column(db.String(120), nullable=True)
+    sms_token         = db.Column(db.String(120), nullable=True)
+    sms_from          = db.Column(db.String(40),  nullable=True)
+    sms_to            = db.Column(db.String(40),  nullable=True)
+
     # Relationship
     user              = db.relationship("User", back_populates="settings")
 
@@ -50,4 +57,9 @@ class UserSettings(db.Model):
             "smtp_port":          self.smtp_port,
             "smtp_username":      self.smtp_username,
             "smtp_password":      self.smtp_password,
+            "sms_alerts":         self.sms_alerts,
+            "sms_sid":            self.sms_sid,
+            "sms_token":          self.sms_token,
+            "sms_from":           self.sms_from,
+            "sms_to":             self.sms_to,
         }

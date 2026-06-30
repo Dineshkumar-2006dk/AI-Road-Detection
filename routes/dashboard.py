@@ -75,6 +75,30 @@ def api_stats():
     # ── Recent 5 ──────────────────────────────────────────────────────────────
     recent = base_query().order_by(Detection.timestamp.desc()).limit(5).all()
 
+    # Calculate AI Road Quality Score & Grade
+    good_c = condition_counts.get("Good", 0)
+    mod_c = condition_counts.get("Moderate", 0)
+    poor_c = condition_counts.get("Poor", 0)
+    crit_c = condition_counts.get("Critical", 0)
+    total_c = good_c + mod_c + poor_c + crit_c
+    
+    if total_c > 0:
+        score = (good_c * 100.0 + mod_c * 80.0 + poor_c * 50.0 + crit_c * 20.0) / total_c
+        score = max(10.0, min(100.0, score))
+    else:
+        score = 100.0
+        
+    if score >= 90.0:
+        grade = "A"
+    elif score >= 75.0:
+        grade = "B"
+    elif score >= 60.0:
+        grade = "C"
+    elif score >= 45.0:
+        grade = "D"
+    else:
+        grade = "F"
+
     return jsonify({
         "total_detections":  total_detections,
         "today_detections":  today_detections,
@@ -85,8 +109,10 @@ def api_stats():
         "trend_data":        trend_data,
         "top_damages":       [{"name": k, "count": v} for k, v in top_damages],
         "recent":            [d.to_dict() for d in recent],
-        "critical_count":    condition_counts.get("Critical", 0),
-        "poor_count":        condition_counts.get("Poor",     0),
-        "moderate_count":    condition_counts.get("Moderate", 0),
-        "good_count":        condition_counts.get("Good",     0),
+        "critical_count":    crit_c,
+        "poor_count":        poor_c,
+        "moderate_count":    mod_c,
+        "good_count":        good_c,
+        "road_quality_score": round(score, 1),
+        "road_quality_grade": grade,
     })

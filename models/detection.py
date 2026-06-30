@@ -23,6 +23,8 @@ class Detection(db.Model):
     avg_confidence = db.Column(db.Float, default=0.0)
     detection_count= db.Column(db.Integer, default=0)
     prediction_time= db.Column(db.Float, default=0.0)  # seconds
+    max_depth_cm   = db.Column(db.Float, default=0.0)
+    total_volume_liters = db.Column(db.Float, default=0.0)
 
     # GPS
     latitude       = db.Column(db.Float, nullable=True)
@@ -74,6 +76,8 @@ class Detection(db.Model):
             "avg_confidence": round(self.avg_confidence * 100, 1),
             "detection_count":self.detection_count,
             "prediction_time":round(self.prediction_time, 3),
+            "max_depth_cm":   self.max_depth_cm,
+            "total_volume_liters": self.total_volume_liters,
             "latitude":       self.latitude,
             "longitude":      self.longitude,
             "location_name":  self.location_name,

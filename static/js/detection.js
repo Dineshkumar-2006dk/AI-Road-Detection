@@ -261,6 +261,12 @@ function renderResult(data) {
   document.getElementById('mCount').textContent    = data.detection_count ?? 0;
   document.getElementById('mTime').textContent     = (data.prediction_time ?? 0).toFixed(3) + 's';
   document.getElementById('mDmgCount').textContent = (data.damage_types || []).length;
+  if (document.getElementById('mDepth')) {
+    document.getElementById('mDepth').textContent  = (data.max_depth_cm ?? 0).toFixed(1) + ' cm';
+  }
+  if (document.getElementById('mVolume')) {
+    document.getElementById('mVolume').textContent = (data.total_volume_liters ?? 0).toFixed(2) + ' L';
+  }
 
   // Damage list
   const damageList = document.getElementById('damageList');
