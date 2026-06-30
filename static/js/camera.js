@@ -464,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Voice Commands (Speech-To-Text STT Control) ───────────────────────────────
 let recognition = null;
 let voiceControlActive = false;
+let hasGreeted = false;
 
 function toggleVoiceControl() {
   const btn = document.getElementById('voiceControlBtn');
@@ -488,7 +489,11 @@ function toggleVoiceControl() {
       btn.style.borderColor = '#d32f2f';
       btn.innerHTML = '<i class="fas fa-microphone-lines fa-pulse me-2"></i>Listening...';
       showToast(window.currentUserLanguage === 'ta' ? 'குரல் கட்டுப்பாடு செயல்படுகிறது ("துவங்கு", "நிறுத்து", "கண்டறி")' : 'Voice commands active. Say "start", "stop", or "detect"', 'success', 4000);
-      speakResponse(window.currentUserLanguage === 'ta' ? 'குரல் கட்டுப்பாடு தயார் நிலையில் உள்ளது' : 'Voice commands ready');
+      
+      if (!hasGreeted) {
+        speakResponse(window.currentUserLanguage === 'ta' ? 'குரல் கட்டுப்பாடு தயார் நிலையில் உள்ளது' : 'Voice commands ready');
+        hasGreeted = true;
+      }
     };
     
     recognition.onresult = (event) => {
@@ -543,6 +548,7 @@ function toggleVoiceControl() {
 
 function deactivateVoiceControl(btn) {
   voiceControlActive = false;
+  hasGreeted = false;
   if (recognition) {
     try { recognition.stop(); } catch(e) {}
     recognition = null;
