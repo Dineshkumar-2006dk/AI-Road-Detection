@@ -461,4 +461,118 @@ document.addEventListener('DOMContentLoaded', () => {
   initCameraSelection();
 });
 
-window.addEventListener('beforeunload', () => { if (mediaStream) stopCamera(); });
+// ── Voice Commands (Speech-To-Text STT Control) ───────────────────────────────
+let recognition = null;
+let voiceControlActive = false;
+
+function toggleVoiceControl() {
+  const btn = document.getElementById('voiceControlBtn');
+  if (!btn) return;
+  
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('Speech recognition is not supported in this browser. Please use Chrome or Edge.', 'danger');
+    return;
+  }
+  
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!voiceControlActive) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = window.currentUserLanguage === 'ta' ? 'ta-IN' : 'en-US';
+    
+    recognition.onstart = () => {
+      voiceControlActive = true;
+      btn.style.background = '#d32f2f';
+      btn.style.borderColor = '#d32f2f';
+      btn.innerHTML = '<i class="fas fa-microphone-lines fa-pulse me-2"></i>Listening...';
+      showToast(window.currentUserLanguage === 'ta' ? 'குரல் கட்டுப்பாடு செயல்படுகிறது ("துவங்கு", "நிறுத்து", "கண்டறி")' : 'Voice commands active. Say "start", "stop", or "detect"', 'success', 4000);
+      speakResponse(window.currentUserLanguage === 'ta' ? 'குரல் கட்டுப்பாடு தயார் நிலையில் உள்ளது' : 'Voice commands ready');
+    };
+    
+    recognition.onresult = (event) => {
+      const result = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+      console.log('[Voice Command] Heard:', result);
+      
+      const isTamil = (window.currentUserLanguage === 'ta');
+      
+      if (result.includes('start') || result.includes('துவங்கு') || result.includes('ஆரம்பி')) {
+        speakResponse(isTamil ? 'கேமரா துவங்குகிறது' : 'Starting camera');
+        startCamera();
+      } else if (result.includes('stop') || result.includes('நிறுத்து')) {
+        speakResponse(isTamil ? 'கேமரா நிறுத்தப்படுகிறது' : 'Stopping camera');
+        stopCamera();
+      } else if (result.includes('capture') || result.includes('detect') || result.includes('கண்டறி') || result.includes('படம்')) {
+        speakResponse(isTamil ? 'சாலை பகுப்பாய்வு செய்யப்படுகிறது' : 'Analyzing road condition');
+        captureFrame();
+      } else if (result.includes('auto') || result.includes('தானியங்கி')) {
+        speakResponse(isTamil ? 'தானியங்கி கண்டறிதல் மாற்றப்படுகிறது' : 'Toggling auto detection');
+        toggleAutoDetect();
+      }
+    };
+    
+    recognition.onerror = (e) => {
+      console.error('[Voice Command] error:', e.error);
+      if (e.error === 'not-allowed') {
+        showToast('Microphone permission blocked. Enable microphone access.', 'danger');
+        deactivateVoiceControl(btn);
+      }
+    };
+    
+    recognition.onend = () => {
+      // Auto-restart listening if user hasn't explicitly disabled it
+      if (voiceControlActive && recognition) {
+        try {
+          recognition.start();
+        } catch (err) {
+          console.warn('[Voice Command] Restart failed:', err);
+        }
+      }
+    };
+    
+    try {
+      recognition.start();
+    } catch (err) {
+      showToast('Failed to start voice controls', 'danger');
+    }
+  } else {
+    deactivateVoiceControl(btn);
+  }
+}
+
+function deactivateVoiceControl(btn) {
+  voiceControlActive = false;
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+    recognition = null;
+  }
+  btn.style.background = '#546e7a';
+  btn.style.borderColor = '#546e7a';
+  btn.innerHTML = '<i class="fas fa-microphone-slash me-2"></i>Voice Commands: OFF';
+  showToast(window.currentUserLanguage === 'ta' ? 'குரல் கட்டுப்பாடு அணைக்கப்பட்டது' : 'Voice commands deactivated', 'warning');
+}
+
+function speakResponse(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = window.currentUserLanguage === 'ta' ? 'ta-IN' : 'en-US';
+  u.rate = 1.0;
+  
+  if (window.currentUserLanguage === 'ta') {
+    const voices = window.speechSynthesis.getVoices();
+    const taVoice = voices.find(v => v.lang.startsWith('ta'));
+    if (taVoice) u.voice = taVoice;
+  }
+  
+  window.speechSynthesis.speak(u);
+}
+
+window.addEventListener('beforeunload', () => {
+  if (mediaStream) stopCamera();
+  if (recognition) {
+    voiceControlActive = false;
+    try { recognition.stop(); } catch(e) {}
+  }
+});
