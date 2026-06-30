@@ -6,7 +6,7 @@ Handles login, register, logout, forgot-password.
 
 from datetime import datetime
 from flask import (Blueprint, render_template, redirect, url_for,
-                   request, flash, session)
+                   request, flash, session, make_response)
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
@@ -33,7 +33,8 @@ def login():
 
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password) and user.is_active:
-            login_user(user, remember=remember)
+            session.permanent = False
+            login_user(user, remember=False)
             user.last_login = datetime.utcnow()
             db.session.commit()
             log_activity("login", f"User {user.username} logged in")
@@ -97,13 +98,16 @@ def register():
 
 
 @auth_bp.route("/logout")
-@login_required
 def logout():
-    log_activity("logout", f"User {current_user.username} logged out")
-    logout_user()
+    if current_user.is_authenticated:
+        log_activity("logout", f"User {current_user.username} logged out")
+        logout_user()
     session.clear()
+    response = make_response(redirect(url_for("auth.login")))
+    response.set_cookie("session", "", expires=0)
+    response.set_cookie("remember_token", "", expires=0)
     flash("You have been logged out.", "info")
-    return redirect(url_for("auth.login"))
+    return response
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
