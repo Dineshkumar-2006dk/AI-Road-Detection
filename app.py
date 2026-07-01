@@ -5,7 +5,7 @@ Entry point: python app.py
 """
 
 import os
-from flask import Flask, redirect, url_for, make_response, request
+from flask import Flask, redirect, url_for, make_response, request, render_template
 from config import Config
 from extensions import db, login_mgr, csrf
 
@@ -57,10 +57,10 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(settings_bp)
 
-    # ── Root redirect ────────────────────────────────────────────────────────
+    # ── Root route ───────────────────────────────────────────────────────────
     @app.route("/")
     def index():
-        return redirect(url_for("auth.login"))
+        return render_template("index.html")
 
     # ── No-cache headers for protected pages (fixes back-button bypass) ──────
     @app.after_request

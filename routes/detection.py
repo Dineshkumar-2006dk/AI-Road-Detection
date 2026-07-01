@@ -21,7 +21,96 @@ from utils.email_utils import send_detection_report
 from utils.voice_alert import speak_alert
 from utils.security import validate_image, log_activity, sanitize_email
 
+import threading
+import time
+
 detection_bp = Blueprint("detection", __name__, url_prefix="/detect")
+
+# Throttling dictionary: user_id -> float timestamp of last critical alert sent
+_LAST_ALERT_TIMES = {}
+
+def _send_notifications_async_thread(app, detection_id, recipient_email, detection_data, result_image_path, settings_dict, lat, lon, location_name, maps_link_val):
+    """Background thread worker to send email/SMS notifications and update DB status."""
+    with app.app_context():
+        # 1. Twilio SMS/WhatsApp
+        sms_success = False
+        if settings_dict and settings_dict.get("sms_alerts") and settings_dict.get("sms_to") and detection_data.get("severity") == "Critical":
+            from utils.sms_utils import send_sms_alert
+            # Reconstruct settings-like object for compatibility
+            class FakeSettings:
+                def __init__(self, d):
+                    for k, v in d.items():
+                        setattr(self, k, v)
+            fake_set = FakeSettings(settings_dict)
+            
+            is_ta = (settings_dict.get("language") == "ta")
+            loc = location_name or ("தென்சிறுவளூர்" if is_ta else "Thensiruvalur")
+            
+            if is_ta:
+                msg = f"⚠️ எச்சரிக்கை (RoadGuard AI): {loc} பகுதியில் ஆபத்தான சாலைப் பழுது (Critical Pothole) கண்டறியப்பட்டுள்ளது.\n"
+                if lat is not None and lon is not None:
+                    msg += f"📍 அமைவிடம்: {lat:.5f}, {lon:.5f}\n"
+                    msg += f"🗺️ கூகுள் மேப்: https://maps.google.com/?q={lat},{lon}"
+            else:
+                msg = f"⚠️ ALERT (RoadGuard AI): Critical road damage detected at {loc}.\n"
+                if lat is not None and lon is not None:
+                    msg += f"📍 Location: {lat:.5f}, {lon:.5f}\n"
+                    msg += f"🗺️ Google Maps: https://maps.google.com/?q={lat},{lon}"
+            
+            sms_success = send_sms_alert(msg, fake_set)
+
+        # 2. Email Notification
+        email_success = False
+        if recipient_email:
+            email_result = send_detection_report(recipient_email, {
+                **detection_data,
+                "latitude":      lat,
+                "longitude":     lon,
+                "location_name": location_name,
+                "maps_link":     maps_link_val,
+            }, result_image_path, user_settings=settings_dict)
+            email_success = email_result["success"]
+
+        # 3. Update DB status
+        from models.detection import Detection
+        from extensions import db
+        det = Detection.query.get(detection_id)
+        if det:
+            det.email_sent = email_success
+            det.email_recipient = recipient_email if recipient_email else None
+            det.sms_sent = sms_success
+            det.sms_recipient = settings_dict.get("sms_to") if (settings_dict and settings_dict.get("sms_alerts")) else None
+            db.session.commit()
+            app.logger.info(f"[Background Alert] Completed. email_sent={email_success}, sms_sent={sms_success}")
+
+def trigger_notifications(detection, result, settings, lat, lon, location_name, maps_link_val, recipient_email=None, source="image"):
+    # Resolve recipient email if not provided but alerts are enabled
+    if not recipient_email and settings:
+        if settings.email_alerts and settings.notification_email:
+            recipient_email = sanitize_email(settings.notification_email)
+
+    settings_dict = settings.to_dict() if settings else None
+
+    # Apply throttling for live camera frames
+    should_send = True
+    if source == "camera" and settings:
+        user_id = settings.user_id
+        now = time.time()
+        last_sent = _LAST_ALERT_TIMES.get(user_id, 0)
+        if (now - last_sent) < 120:  # 2 minute throttle
+            should_send = False
+        else:
+            _LAST_ALERT_TIMES[user_id] = now
+
+    if should_send and (recipient_email or (settings_dict and settings_dict.get("sms_alerts") and result.get("severity") == "Critical")):
+        app = current_app._get_current_object()
+        t = threading.Thread(
+            target=_send_notifications_async_thread,
+            args=(app, detection.id, recipient_email, result, result["result_image_path"], settings_dict, lat, lon, location_name, maps_link_val)
+        )
+        t.daemon = True
+        t.start()
+        app.logger.info(f"[Background Alert] Thread started for detection_id={detection.id}")
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
@@ -157,32 +246,10 @@ def api_detect_image():
         current_app.logger.info("[Voice] Voice played")
         print("[Voice] Voice played")
 
-    # Trigger SMS alert
-    if settings:
-        _trigger_sms_alert(result, settings, lat, lon, location_name)
-
-    # Send email if requested
-    email_status = {"sent": False, "message": ""}
+    # Send email and SMS/WhatsApp alert asynchronously in the background
     recipient = sanitize_email(request.form.get("email", ""))
-    if not recipient and settings:
-        if settings.email_alerts and settings.notification_email:
-            recipient = sanitize_email(settings.notification_email)
-    if recipient:
-        result_path = result["result_image_path"]
-        email_result = send_detection_report(recipient, {
-            **result,
-            "latitude":      lat,
-            "longitude":     lon,
-            "location_name": location_name,
-            "maps_link":     maps_link_val,
-        }, result_path, user_settings=settings)
-        email_status = {"sent": email_result["success"], "message": email_result["message"]}
-        if email_result["success"]:
-            det.email_sent      = True
-            det.email_recipient = recipient
-            db.session.commit()
-            current_app.logger.info("[Email] Email sent: %s", recipient)
-            print(f"[Email] Email sent: {recipient}")
+    trigger_notifications(det, result, settings, lat, lon, location_name, maps_link_val, recipient_email=recipient, source="image")
+    email_status = {"sent": True if (recipient or (settings and settings.email_alerts)) else False, "message": "Alert processing in background thread"}
 
     log_activity("image_detection", f"Condition: {result['road_condition']}, Severity: {result['severity']}")
 
@@ -318,28 +385,12 @@ def api_detect_frame():
             det = _save_detection(result, f"frame_{uid}.jpg", lat, lon, location_name, maps_link_val, source="camera")
             saved_to_db = True
 
-            # Auto email alert for live camera detection
+            # Auto email/SMS/WhatsApp alert for live camera detection (asynchronous + throttled)
             if current_user.is_authenticated:
                 settings = UserSettings.query.filter_by(user_id=current_user.id).first()
                 if settings:
-                    _trigger_sms_alert(result, settings, lat, lon, location_name)
-                    if settings.email_alerts and settings.notification_email:
-                        recipient = sanitize_email(settings.notification_email)
-                        if recipient:
-                            result_path = result["result_image_path"]
-                            email_result = send_detection_report(recipient, {
-                                **result,
-                                "latitude":      lat,
-                                "longitude":     lon,
-                                "location_name": location_name,
-                                "maps_link":     maps_link_val,
-                            }, result_path, user_settings=settings)
-                            email_status = {"sent": email_result["success"], "message": email_result["message"]}
-                            if email_result["success"]:
-                                det.email_sent      = True
-                                det.email_recipient = recipient
-                                db.session.commit()
-                                current_app.logger.info("[Email] Auto Email sent for live camera: %s", recipient)
+                    trigger_notifications(det, result, settings, lat, lon, location_name, maps_link_val, source="camera")
+                    email_status = {"sent": True if settings.email_alerts else False, "message": "Alert processing asynchronously"}
         except Exception as exc:
             return jsonify({"success": False, "error": str(exc)}), 500
 

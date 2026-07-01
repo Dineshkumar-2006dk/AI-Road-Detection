@@ -35,6 +35,8 @@ class Detection(db.Model):
     # Notification
     email_sent     = db.Column(db.Boolean, default=False)
     email_recipient= db.Column(db.String(120), nullable=True)
+    sms_sent       = db.Column(db.Boolean, default=False)
+    sms_recipient  = db.Column(db.String(40), nullable=True)
 
     # Meta
     timestamp      = db.Column(db.DateTime, default=datetime.utcnow)
@@ -83,6 +85,8 @@ class Detection(db.Model):
             "location_name":  self.location_name,
             "maps_link":      self.maps_link,
             "email_sent":     self.email_sent,
+            "sms_sent":       self.sms_sent,
+            "sms_recipient":  self.sms_recipient,
             "timestamp":      self.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.timestamp else "",
             "source":         self.source,
         }

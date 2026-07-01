@@ -114,6 +114,8 @@ async function startCamera(deviceId = null) {
 // ── Stop Camera ───────────────────────────────────────────────────────────────
 function stopCamera() {
   if (autoDetect) toggleAutoDetect();
+  if (autoDetectLoop) { clearInterval(autoDetectLoop); autoDetectLoop = null; }
+  autoDetect = false;
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
   if (fpsInterval) { clearInterval(fpsInterval); fpsInterval = null; }
   video.srcObject = null;
@@ -278,7 +280,7 @@ function renderLiveResult(data) {
   }
 
   // Log entry
-  if (data.detection_count > 0) {
+  if (data.detection_count > 0 && mediaStream) {
     addToLog(data);
     // Voice throttled to once per 5 s
     if (typeof voiceEnabled !== 'undefined' && voiceEnabled
