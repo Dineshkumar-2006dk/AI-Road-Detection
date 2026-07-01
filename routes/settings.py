@@ -64,6 +64,17 @@ def api_get():
     return jsonify(s.to_dict())
 
 
+@settings_bp.route("/api/db_type")
+@login_required
+def api_db_type():
+    from flask import current_app
+    uri = current_app.config.get("SQLALCHEMY_DATABASE_URI", "")
+    if "sqlite" in uri:
+        return jsonify({"db_type": "SQLite (Temporary)", "persistent": False})
+    else:
+        return jsonify({"db_type": "PostgreSQL (Persistent)", "persistent": True})
+
+
 @settings_bp.route("/features")
 @login_required
 def features():

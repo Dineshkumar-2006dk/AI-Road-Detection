@@ -217,6 +217,11 @@
             <span class="spinner-border spinner-border-sm text-primary"></span>
           </span>
         </div>
+        <div class="model-info-row"><span>Database:</span>
+          <span class="model-val" id="dbTypeVal">
+            <span class="spinner-border spinner-border-sm text-primary"></span>
+          </span>
+        </div>
         <div class="model-info-row"><span>Augmentation:</span><span class="model-val">Brightness, Flip, Rotate, Noise, Shadow</span></div>
       </div>
     </div>
@@ -288,6 +293,12 @@ function resetDefaults() {
 // Check model mode
 fetch('/settings/api/get').then(r=>r.json()).then(() => {
   document.getElementById('modelMode').innerHTML = '<span style="color:#ffa726;">⚡ Simulation (OpenCV)</span>';
+}).catch(()=>{});
+
+// Check db type
+fetch('/settings/api/db_type').then(r=>r.json()).then(data => {
+  const color = data.persistent ? '#66bb6a' : '#ef5350';
+  document.getElementById('dbTypeVal').innerHTML = `<span style="color:${color};">${data.db_type}</span>`;
 }).catch(()=>{});
 </script>
 {% endblock %}
