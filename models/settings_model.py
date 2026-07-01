@@ -38,6 +38,7 @@ class UserSettings(db.Model):
     sms_token         = db.Column(db.String(120), nullable=True)
     sms_from          = db.Column(db.String(40),  nullable=True)
     sms_to            = db.Column(db.String(40),  nullable=True)
+    sms_mode          = db.Column(db.String(20),  default="sms")   # sms | whatsapp
 
     # Relationship
     user              = db.relationship("User", back_populates="settings")
@@ -62,4 +63,5 @@ class UserSettings(db.Model):
             "sms_token":          self.sms_token,
             "sms_from":           self.sms_from,
             "sms_to":             self.sms_to,
+            "sms_mode":           self.sms_mode,
         }

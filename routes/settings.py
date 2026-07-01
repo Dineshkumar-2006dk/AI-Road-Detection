@@ -47,6 +47,7 @@ def api_save():
     s.sms_token          = data.get("sms_token",          s.sms_token)
     s.sms_from           = data.get("sms_from",           s.sms_from)
     s.sms_to             = data.get("sms_to",             s.sms_to)
+    s.sms_mode           = data.get("sms_mode",           s.sms_mode)
 
     db.session.commit()
     return jsonify({"success": True, "settings": s.to_dict()})
