@@ -30,40 +30,10 @@ detection_bp = Blueprint("detection", __name__, url_prefix="/detect")
 _LAST_ALERT_TIMES = {}
 
 def _send_notifications_async_thread(app, detection_id, recipient_email, detection_data, result_image_path, settings_dict, lat, lon, location_name, maps_link_val):
-    """Background thread worker to send email/SMS notifications and update DB status."""
+    """Background thread worker to send email notifications and update DB status."""
     try:
         with app.app_context():
-            # 1. Twilio SMS/WhatsApp
-            sms_success = False
-            if settings_dict and settings_dict.get("sms_alerts") and settings_dict.get("sms_to"):
-                sev = detection_data.get("severity")
-                if sev in ("Critical", "High"):
-                    from utils.sms_utils import send_sms_alert
-                    class FakeSettings:
-                        def __init__(self, d):
-                            for k, v in d.items():
-                                setattr(self, k, v)
-                    fake_set = FakeSettings(settings_dict)
-                    
-                    is_ta = (settings_dict.get("language") == "ta")
-                    loc = location_name or ("தென்சிறுவளூர்" if is_ta else "Thensiruvalur")
-                    
-                    if is_ta:
-                        msg = f"⚠️ எச்சரிக்கை (RoadGuard AI): {loc} பகுதியில் ஆபத்தான சாலைப் பழுது ({sev} Pothole) கண்டறியப்பட்டுள்ளது.\n"
-                        if lat is not None and lon is not None:
-                            msg += f"📍 அமைவிடம்: {lat:.5f}, {lon:.5f}\n"
-                            msg += f"🗺️ கூகுள் மேப்: https://maps.google.com/?q={lat},{lon}"
-                    else:
-                        msg = f"⚠️ ALERT (RoadGuard AI): {sev} road damage detected at {loc}.\n"
-                        if lat is not None and lon is not None:
-                            msg += f"📍 Location: {lat:.5f}, {lon:.5f}\n"
-                            msg += f"🗺️ Google Maps: https://maps.google.com/?q={lat},{lon}"
-                    
-                    sms_success = send_sms_alert(msg, fake_set)
-                else:
-                    app.logger.info(f"[SMS ALERT] Skipped because severity is {sev} (only sent for Critical/High)")
-
-            # 2. Email Notification
+            # 1. Email Notification
             email_success = False
             if recipient_email:
                 email_result = send_detection_report(recipient_email, {
@@ -75,17 +45,15 @@ def _send_notifications_async_thread(app, detection_id, recipient_email, detecti
                 }, result_image_path, user_settings=settings_dict)
                 email_success = email_result["success"]
 
-            # 3. Update DB status
+            # 2. Update DB status
             from models.detection import Detection
             from extensions import db
             det = db.session.get(Detection, detection_id)
             if det:
                 det.email_sent = email_success
                 det.email_recipient = recipient_email if recipient_email else None
-                det.sms_sent = sms_success
-                det.sms_recipient = settings_dict.get("sms_to") if (settings_dict and settings_dict.get("sms_alerts")) else None
                 db.session.commit()
-                app.logger.info(f"[Background Alert] Completed. email_sent={email_success}, sms_sent={sms_success}")
+                app.logger.info(f"[Background Alert] Completed. email_sent={email_success}")
     except Exception as e:
         app.logger.exception(f"[Background Alert] Thread encountered unexpected error: {e}")
 
@@ -110,69 +78,35 @@ def trigger_notifications(detection, result, settings, lat, lon, location_name, 
             _LAST_ALERT_TIMES[user_id] = now
 
     if not should_send:
-        return {"email_sent": False, "sms_sent": False, "email_error": "Throttled", "sms_error": "Throttled"}
+        return {"email_sent": False, "email_error": "Throttled"}
+
+    if not recipient_email:
+        return {"email_sent": False, "email_error": "No email recipient specified"}
 
     app = current_app._get_current_object()
     result_image_path = result.get("result_image_path")
 
     if sync:
         # Run synchronously for Image Upload
-        sms_success = False
-        sms_error = None
-        if settings_dict and settings_dict.get("sms_alerts") and settings_dict.get("sms_to"):
-            sev = result.get("severity")
-            if sev in ("Critical", "High"):
-                from utils.sms_utils import send_sms_alert
-                class FakeSettings:
-                    def __init__(self, d):
-                        for k, v in d.items():
-                            setattr(self, k, v)
-                fake_set = FakeSettings(settings_dict)
-                
-                is_ta = (settings_dict.get("language") == "ta")
-                loc = location_name or ("தென்சிறுவளூர்" if is_ta else "Thensiruvalur")
-                if is_ta:
-                    msg = f"⚠️ எச்சரிக்கை (RoadGuard AI): {loc} பகுதியில் ஆபத்தான சாலைப் பழுது ({sev} Pothole) கண்டறியப்பட்டுள்ளது.\n"
-                    if lat is not None and lon is not None:
-                        msg += f"📍 அமைவிடம்: {lat:.5f}, {lon:.5f}\n"
-                        msg += f"🗺️ கூகுள் மேப்: https://maps.google.com/?q={lat},{lon}"
-                else:
-                    msg = f"⚠️ ALERT (RoadGuard AI): {sev} road damage detected at {loc}.\n"
-                    if lat is not None and lon is not None:
-                        msg += f"📍 Location: {lat:.5f}, {lon:.5f}\n"
-                        msg += f"🗺️ Google Maps: https://maps.google.com/?q={lat},{lon}"
-                try:
-                    sms_success = send_sms_alert(msg, fake_set)
-                    if not sms_success:
-                        sms_error = "Twilio dispatch failed"
-                except Exception as e:
-                    sms_error = str(e)
-            else:
-                sms_error = f"SMS alert skipped: severity is {sev} (only sent for Critical/High)"
-                app.logger.info(f"[SMS ALERT] {sms_error}")
-
         email_success = False
         email_error = None
-        if recipient_email:
-            try:
-                email_result = send_detection_report(recipient_email, {
-                    **result,
-                    "latitude":      lat,
-                    "longitude":     lon,
-                    "location_name": location_name,
-                    "maps_link":     maps_link_val,
-                }, result_image_path, user_settings=settings_dict)
-                email_success = email_result["success"]
-                email_error = email_result.get("message")
-            except Exception as e:
-                email_error = str(e)
+        try:
+            email_result = send_detection_report(recipient_email, {
+                **result,
+                "latitude":      lat,
+                "longitude":     lon,
+                "location_name": location_name,
+                "maps_link":     maps_link_val,
+            }, result_image_path, user_settings=settings_dict)
+            email_success = email_result["success"]
+            email_error = email_result.get("message")
+        except Exception as e:
+            email_error = str(e)
 
         # Update DB status immediately
         from extensions import db
         detection.email_sent = email_success
         detection.email_recipient = recipient_email if recipient_email else None
-        detection.sms_sent = sms_success
-        detection.sms_recipient = settings_dict.get("sms_to") if (settings_dict and settings_dict.get("sms_alerts")) else None
         try:
             db.session.commit()
         except Exception:
@@ -180,21 +114,18 @@ def trigger_notifications(detection, result, settings, lat, lon, location_name, 
 
         return {
             "email_sent": email_success,
-            "sms_sent": sms_success,
-            "email_error": email_error,
-            "sms_error": sms_error
+            "email_error": email_error
         }
     else:
         # Run asynchronously in background thread for camera
-        if recipient_email or (settings_dict and settings_dict.get("sms_alerts") and result.get("severity") in ("Critical", "High")):
-            t = threading.Thread(
-                target=_send_notifications_async_thread,
-                args=(app, detection.id, recipient_email, result, result_image_path, settings_dict, lat, lon, location_name, maps_link_val)
-            )
-            t.daemon = True
-            t.start()
-            app.logger.info(f"[Background Alert] Thread started for detection_id={detection.id}")
-        return {"email_sent": True if recipient_email else False, "sms_sent": False, "email_error": "Alert processing asynchronously", "sms_error": None}
+        t = threading.Thread(
+            target=_send_notifications_async_thread,
+            args=(app, detection.id, recipient_email, result, result_image_path, settings_dict, lat, lon, location_name, maps_link_val)
+        )
+        t.daemon = True
+        t.start()
+        app.logger.info(f"[Background Alert] Thread started for detection_id={detection.id}")
+        return {"email_sent": True, "email_error": "Alert processing asynchronously"}
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
