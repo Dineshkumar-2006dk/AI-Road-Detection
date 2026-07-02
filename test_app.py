@@ -12,9 +12,9 @@ def check(label, cond, detail=""):
 
 print("\n=== RoadGuard AI – Functional Test ===\n")
 
-# 1. Root redirect
+# 1. Root landing page
 r = requests.get(BASE + "/", allow_redirects=False, timeout=5)
-check("Root redirects to login", r.status_code == 302)
+check("Root loads Home Page", r.status_code == 200)
 
 # 2. Login page
 r = requests.get(BASE + "/auth/login", timeout=5)

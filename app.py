@@ -75,9 +75,46 @@ def create_app(config_class=Config):
     # ── Create DB tables & seed admin ───────────────────────────────────────
     with app.app_context():
         db.create_all()
+        run_migrations(app)
         _seed_admin(app)
 
     return app
+
+
+def run_migrations(app):
+    """Run lightweight schema migrations to add missing columns automatically."""
+    from extensions import db
+    from sqlalchemy import text
+    
+    with app.app_context():
+        bind_engine = db.engine
+        is_postgres = "postgresql" in bind_engine.driver
+        
+        new_cols = [
+            ("sms_sent", "BOOLEAN DEFAULT 0", "BOOLEAN DEFAULT FALSE"),
+            ("sms_recipient", "VARCHAR(40)", "VARCHAR(40)"),
+            ("original_image_data", "BLOB", "BYTEA"),
+            ("result_image_data", "BLOB", "BYTEA"),
+        ]
+        
+        for col_name, type_sqlite, type_postgres in new_cols:
+            if is_postgres:
+                sql = f"ALTER TABLE detections ADD COLUMN IF NOT EXISTS {col_name} {type_postgres};"
+                try:
+                    db.session.execute(text(sql))
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.warning(f"Failed to add column {col_name} via Postgres alter: {e}")
+            else:
+                sql = f"ALTER TABLE detections ADD COLUMN {col_name} {type_sqlite};"
+                try:
+                    db.session.execute(text(sql))
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    if "duplicate column name" not in str(e).lower():
+                        app.logger.warning(f"Failed to add column {col_name} via SQLite alter: {e}")
 
 
 def _seed_admin(app):

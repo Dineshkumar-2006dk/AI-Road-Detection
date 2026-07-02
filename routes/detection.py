@@ -31,57 +31,60 @@ _LAST_ALERT_TIMES = {}
 
 def _send_notifications_async_thread(app, detection_id, recipient_email, detection_data, result_image_path, settings_dict, lat, lon, location_name, maps_link_val):
     """Background thread worker to send email/SMS notifications and update DB status."""
-    with app.app_context():
-        # 1. Twilio SMS/WhatsApp
-        sms_success = False
-        if settings_dict and settings_dict.get("sms_alerts") and settings_dict.get("sms_to") and detection_data.get("severity") == "Critical":
-            from utils.sms_utils import send_sms_alert
-            # Reconstruct settings-like object for compatibility
-            class FakeSettings:
-                def __init__(self, d):
-                    for k, v in d.items():
-                        setattr(self, k, v)
-            fake_set = FakeSettings(settings_dict)
-            
-            is_ta = (settings_dict.get("language") == "ta")
-            loc = location_name or ("தென்சிறுவளூர்" if is_ta else "Thensiruvalur")
-            
-            if is_ta:
-                msg = f"⚠️ எச்சரிக்கை (RoadGuard AI): {loc} பகுதியில் ஆபத்தான சாலைப் பழுது (Critical Pothole) கண்டறியப்பட்டுள்ளது.\n"
-                if lat is not None and lon is not None:
-                    msg += f"📍 அமைவிடம்: {lat:.5f}, {lon:.5f}\n"
-                    msg += f"🗺️ கூகுள் மேப்: https://maps.google.com/?q={lat},{lon}"
-            else:
-                msg = f"⚠️ ALERT (RoadGuard AI): Critical road damage detected at {loc}.\n"
-                if lat is not None and lon is not None:
-                    msg += f"📍 Location: {lat:.5f}, {lon:.5f}\n"
-                    msg += f"🗺️ Google Maps: https://maps.google.com/?q={lat},{lon}"
-            
-            sms_success = send_sms_alert(msg, fake_set)
+    try:
+        with app.app_context():
+            # 1. Twilio SMS/WhatsApp
+            sms_success = False
+            if settings_dict and settings_dict.get("sms_alerts") and settings_dict.get("sms_to") and detection_data.get("severity") == "Critical":
+                from utils.sms_utils import send_sms_alert
+                # Reconstruct settings-like object for compatibility
+                class FakeSettings:
+                    def __init__(self, d):
+                        for k, v in d.items():
+                            setattr(self, k, v)
+                fake_set = FakeSettings(settings_dict)
+                
+                is_ta = (settings_dict.get("language") == "ta")
+                loc = location_name or ("தென்சிறுவளூர்" if is_ta else "Thensiruvalur")
+                
+                if is_ta:
+                    msg = f"⚠️ எச்சரிக்கை (RoadGuard AI): {loc} பகுதியில் ஆபத்தான சாலைப் பழுது (Critical Pothole) கண்டறியப்பட்டுள்ளது.\n"
+                    if lat is not None and lon is not None:
+                        msg += f"📍 அமைவிடம்: {lat:.5f}, {lon:.5f}\n"
+                        msg += f"🗺️ கூகுள் மேப்: https://maps.google.com/?q={lat},{lon}"
+                else:
+                    msg = f"⚠️ ALERT (RoadGuard AI): Critical road damage detected at {loc}.\n"
+                    if lat is not None and lon is not None:
+                        msg += f"📍 Location: {lat:.5f}, {lon:.5f}\n"
+                        msg += f"🗺️ Google Maps: https://maps.google.com/?q={lat},{lon}"
+                
+                sms_success = send_sms_alert(msg, fake_set)
 
-        # 2. Email Notification
-        email_success = False
-        if recipient_email:
-            email_result = send_detection_report(recipient_email, {
-                **detection_data,
-                "latitude":      lat,
-                "longitude":     lon,
-                "location_name": location_name,
-                "maps_link":     maps_link_val,
-            }, result_image_path, user_settings=settings_dict)
-            email_success = email_result["success"]
+            # 2. Email Notification
+            email_success = False
+            if recipient_email:
+                email_result = send_detection_report(recipient_email, {
+                    **detection_data,
+                    "latitude":      lat,
+                    "longitude":     lon,
+                    "location_name": location_name,
+                    "maps_link":     maps_link_val,
+                }, result_image_path, user_settings=settings_dict)
+                email_success = email_result["success"]
 
-        # 3. Update DB status
-        from models.detection import Detection
-        from extensions import db
-        det = Detection.query.get(detection_id)
-        if det:
-            det.email_sent = email_success
-            det.email_recipient = recipient_email if recipient_email else None
-            det.sms_sent = sms_success
-            det.sms_recipient = settings_dict.get("sms_to") if (settings_dict and settings_dict.get("sms_alerts")) else None
-            db.session.commit()
-            app.logger.info(f"[Background Alert] Completed. email_sent={email_success}, sms_sent={sms_success}")
+            # 3. Update DB status
+            from models.detection import Detection
+            from extensions import db
+            det = db.session.get(Detection, detection_id)
+            if det:
+                det.email_sent = email_success
+                det.email_recipient = recipient_email if recipient_email else None
+                det.sms_sent = sms_success
+                det.sms_recipient = settings_dict.get("sms_to") if (settings_dict and settings_dict.get("sms_alerts")) else None
+                db.session.commit()
+                app.logger.info(f"[Background Alert] Completed. email_sent={email_success}, sms_sent={sms_success}")
+    except Exception as e:
+        app.logger.exception(f"[Background Alert] Thread encountered unexpected error: {e}")
 
 def trigger_notifications(detection, result, settings, lat, lon, location_name, maps_link_val, recipient_email=None, source="image"):
     # Resolve recipient email if not provided but alerts are enabled
@@ -127,6 +130,24 @@ def _get_thresholds():
 
 def _save_detection(result: dict, original_name: str, lat=None, lon=None,
                     location_name=None, maps_link_val=None, source="image") -> Detection:
+    orig_data = None
+    orig_path = os.path.join(current_app.config["UPLOAD_FOLDER"], original_name)
+    if os.path.exists(orig_path):
+        try:
+            with open(orig_path, "rb") as f:
+                orig_data = f.read()
+        except Exception:
+            pass
+
+    res_data = None
+    res_path = os.path.join(current_app.config["RESULT_FOLDER"], result["result_image_name"])
+    if os.path.exists(res_path):
+        try:
+            with open(res_path, "rb") as f:
+                res_data = f.read()
+        except Exception:
+            pass
+
     try:
         det = Detection(
             user_id        = current_user.id if current_user.is_authenticated else None,
@@ -144,6 +165,8 @@ def _save_detection(result: dict, original_name: str, lat=None, lon=None,
             location_name  = location_name,
             maps_link      = maps_link_val,
             source         = source,
+            original_image_data = orig_data,
+            result_image_data   = res_data,
         )
         det.set_damage_types(result["damage_types"])
         det.set_confidences(result["confidences"])
@@ -322,13 +345,41 @@ def api_send_email(det_id):
 @detection_bp.route("/results/<filename>")
 @login_required
 def serve_result(filename):
-    return send_from_directory(current_app.config["RESULT_FOLDER"], filename)
+    import io
+    from flask import send_file
+    path = os.path.join(current_app.config["RESULT_FOLDER"], filename)
+    if os.path.exists(path):
+        return send_from_directory(current_app.config["RESULT_FOLDER"], filename)
+
+    det = Detection.query.filter_by(result_image=filename).first()
+    if det and det.result_image_data:
+        try:
+            with open(path, "wb") as f:
+                f.write(det.result_image_data)
+        except Exception:
+            pass
+        return send_file(io.BytesIO(det.result_image_data), mimetype="image/jpeg")
+    return "Image not found", 404
 
 
 @detection_bp.route("/uploads/<filename>")
 @login_required
 def serve_upload(filename):
-    return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
+    import io
+    from flask import send_file
+    path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+    if os.path.exists(path):
+        return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
+
+    det = Detection.query.filter_by(original_image=filename).first()
+    if det and det.original_image_data:
+        try:
+            with open(path, "wb") as f:
+                f.write(det.original_image_data)
+        except Exception:
+            pass
+        return send_file(io.BytesIO(det.original_image_data), mimetype="image/jpeg")
+    return "Image not found", 404
 
 
 # ── Camera Detection Page ─────────────────────────────────────────────────────

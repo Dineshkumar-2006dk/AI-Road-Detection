@@ -38,6 +38,10 @@ class Detection(db.Model):
     sms_sent       = db.Column(db.Boolean, default=False)
     sms_recipient  = db.Column(db.String(40), nullable=True)
 
+    # Persistence fallbacks (binary storage for Render ephemeral disk)
+    original_image_data = db.Column(db.LargeBinary, nullable=True)
+    result_image_data   = db.Column(db.LargeBinary, nullable=True)
+
     # Meta
     timestamp      = db.Column(db.DateTime, default=datetime.utcnow)
     source         = db.Column(db.String(20), default="image")  # image | camera

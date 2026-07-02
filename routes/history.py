@@ -102,6 +102,12 @@ def export_pdf(det_id):
     det = _user_detections().filter_by(id=det_id).first_or_404()
     import os
     result_path = os.path.join(current_app.config["RESULT_FOLDER"], det.result_image or "")
+    if not os.path.exists(result_path) and det.result_image_data:
+        try:
+            with open(result_path, "wb") as f:
+                f.write(det.result_image_data)
+        except Exception:
+            pass
     pdf_bytes   = generate_pdf_report(det.to_dict(), result_path)
     return send_file(
         io.BytesIO(pdf_bytes),
