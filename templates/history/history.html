@@ -128,47 +128,53 @@ async function loadHistory(page = 1) {
   const sev    = document.getElementById('sevFilter').value;
   const src    = document.getElementById('srcFilter').value;
 
-  const res = await fetch(`/history/api/list?page=${page}&per_page=15&search=${encodeURIComponent(search)}&condition=${cond}&severity=${sev}&source=${src}`);
-  const data = await res.json();
-
-  document.getElementById('showCount').textContent = data.items.length;
-  document.getElementById('totalCount').textContent = data.total;
-
   const tbody = document.getElementById('historyBody');
-  if (data.items.length === 0) {
-     tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5" style="color:#546e7a;">No detections found.</td></tr>';
-     return;
+  try {
+    const res = await fetch(`/history/api/list?page=${page}&per_page=15&search=${encodeURIComponent(search)}&condition=${cond}&severity=${sev}&source=${src}`);
+    if (!res.ok) throw new Error('API Response Error');
+    const data = await res.json();
+
+    document.getElementById('showCount').textContent = data.items.length;
+    document.getElementById('totalCount').textContent = data.total;
+
+    if (data.items.length === 0) {
+       tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5" style="color:#546e7a;">No detections found.</td></tr>';
+       return;
+    }
+
+    tbody.innerHTML = data.items.map(d => {
+      const condColor = {Good:'#28a745',Moderate:'#ffc107',Poor:'#fd7e14',Critical:'#dc3545'}[d.road_condition]||'#6c757d';
+      const sevColor  = {Low:'#28a745',Medium:'#ffc107',High:'#fd7e14',Critical:'#dc3545'}[d.severity]||'#6c757d';
+      const dmg = (d.damage_types||[]).map(t=>`<span class="dmg-tag">${t.replace(/_/g,' ')}</span>`).join('');
+      const thumb = d.result_image ? `<img src="${RESULT_BASE}${d.result_image}" class="result-thumb" onclick="showImg('${RESULT_BASE}${d.result_image}')" alt="result">` : '<span class="no-img"><i class="fas fa-image"></i></span>';
+      const mapsLink = d.maps_link ? `<a href="${d.maps_link}" target="_blank" style="color:#42a5f5;font-size:12px;"><i class="fas fa-map-pin me-1"></i>Map</a>` : '<span style="color:#455a64;">No GPS</span>';
+      const emailStatus = d.email_sent ? '<span style="color:#66bb6a;font-size:12px;">Sent</span>' : '<span style="color:#78909c;font-size:12px;">Not sent</span>';
+      const smsStatus   = d.sms_sent ? '<span style="color:#66bb6a;font-size:12px;">Sent</span>' : '<span style="color:#78909c;font-size:12px;">Not sent</span>';
+      return `<tr>
+        <td><span style="color:#546e7a;">#${d.id}</span></td>
+        <td style="white-space:nowrap;color:#b0bec5;font-size:13px;">${d.timestamp}</td>
+        <td>${thumb}</td>
+        <td><span class="cond-chip" style="background:${condColor}20;color:${condColor};border:1px solid ${condColor}40;">${d.road_condition||'—'}</span></td>
+        <td><span class="cond-chip" style="background:${sevColor}20;color:${sevColor};border:1px solid ${sevColor}40;">${d.severity||'—'}</span></td>
+        <td><div class="dmg-tags">${dmg||'<span style="color:#455a64;">None</span>'}</div></td>
+        <td><div class="conf-bar-mini"><div style="width:${d.avg_confidence}%;background:${condColor};height:100%;border-radius:3px;"></div></div><span style="font-size:12px;color:#b0bec5;">${d.avg_confidence}%</span></td>
+        <td>${mapsLink}</td>
+        <td>${emailStatus}</td>
+        <td>${smsStatus}</td>
+        <td>
+          <div class="d-flex gap-1">
+            <a href="/history/api/export/pdf/${d.id}" download class="btn-tbl-action" title="PDF"><i class="fas fa-file-pdf"></i></a>
+            <button class="btn-tbl-action danger" onclick="deleteDetection(${d.id})" title="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    renderPagination(data);
+  } catch (e) {
+    console.error('History load error:', e);
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Failed to load history. Please try reloading the page.</td></tr>';
   }
-
-  tbody.innerHTML = data.items.map(d => {
-    const condColor = {Good:'#28a745',Moderate:'#ffc107',Poor:'#fd7e14',Critical:'#dc3545'}[d.road_condition]||'#6c757d';
-    const sevColor  = {Low:'#28a745',Medium:'#ffc107',High:'#fd7e14',Critical:'#dc3545'}[d.severity]||'#6c757d';
-    const dmg = (d.damage_types||[]).map(t=>`<span class="dmg-tag">${t.replace(/_/g,' ')}</span>`).join('');
-    const thumb = d.result_image ? `<img src="${RESULT_BASE}${d.result_image}" class="result-thumb" onclick="showImg('${RESULT_BASE}${d.result_image}')" alt="result">` : '<span class="no-img"><i class="fas fa-image"></i></span>';
-    const mapsLink = d.maps_link ? `<a href="${d.maps_link}" target="_blank" style="color:#42a5f5;font-size:12px;"><i class="fas fa-map-pin me-1"></i>Map</a>` : '<span style="color:#455a64;">No GPS</span>';
-    const emailStatus = d.email_sent ? '<span style="color:#66bb6a;font-size:12px;">Sent</span>' : '<span style="color:#78909c;font-size:12px;">Not sent</span>';
-    const smsStatus   = d.sms_sent ? '<span style="color:#66bb6a;font-size:12px;">Sent</span>' : '<span style="color:#78909c;font-size:12px;">Not sent</span>';
-    return `<tr>
-      <td><span style="color:#546e7a;">#${d.id}</span></td>
-      <td style="white-space:nowrap;color:#b0bec5;font-size:13px;">${d.timestamp}</td>
-      <td>${thumb}</td>
-      <td><span class="cond-chip" style="background:${condColor}20;color:${condColor};border:1px solid ${condColor}40;">${d.road_condition||'—'}</span></td>
-      <td><span class="cond-chip" style="background:${sevColor}20;color:${sevColor};border:1px solid ${sevColor}40;">${d.severity||'—'}</span></td>
-      <td><div class="dmg-tags">${dmg||'<span style="color:#455a64;">None</span>'}</div></td>
-      <td><div class="conf-bar-mini"><div style="width:${d.avg_confidence}%;background:${condColor};height:100%;border-radius:3px;"></div></div><span style="font-size:12px;color:#b0bec5;">${d.avg_confidence}%</span></td>
-      <td>${mapsLink}</td>
-      <td>${emailStatus}</td>
-      <td>${smsStatus}</td>
-      <td>
-        <div class="d-flex gap-1">
-          <a href="/history/api/export/pdf/${d.id}" download class="btn-tbl-action" title="PDF"><i class="fas fa-file-pdf"></i></a>
-          <button class="btn-tbl-action danger" onclick="deleteDetection(${d.id})" title="Delete"><i class="fas fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-
-  renderPagination(data);
 }
 
 function renderPagination(data) {

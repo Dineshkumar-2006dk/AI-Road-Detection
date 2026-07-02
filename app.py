@@ -88,7 +88,7 @@ def run_migrations(app):
     
     with app.app_context():
         bind_engine = db.engine
-        is_postgres = "postgresql" in bind_engine.driver
+        is_postgres = bind_engine.name == "postgresql"
         
         new_cols = [
             ("sms_sent", "BOOLEAN DEFAULT 0", "BOOLEAN DEFAULT FALSE"),
