@@ -95,32 +95,29 @@
               <label for="emailToggle"></label>
             </div>
           </div>
-          <label class="form-label-sm">Notification Email</label>
+          <label class="form-label-sm">Notification Recipient Email</label>
           <input type="email" id="notifEmail" class="form-input-sm" placeholder="alerts@example.com"
                  value="{{ settings.notification_email or '' }}">
           <div class="row g-2 mt-2">
-            <div class="col-8">
-              <label class="form-label-sm">SMTP Server</label>
-              <input type="text" id="smtpServer" class="form-input-sm" placeholder="smtp.gmail.com"
-                     value="{{ settings.smtp_server or 'smtp.gmail.com' }}">
+            <div class="col-6">
+              <label class="form-label-sm">Sender Name</label>
+              <input type="text" id="smtpServer" class="form-input-sm" placeholder="RoadGuard AI"
+                     value="{{ settings.smtp_server or 'RoadGuard AI' }}">
             </div>
-            <div class="col-4">
-              <label class="form-label-sm">SMTP Port</label>
-              <input type="number" id="smtpPort" class="form-input-sm" placeholder="587"
-                     value="{{ settings.smtp_port or 587 }}">
+            <div class="col-6">
+              <label class="form-label-sm">Sender Email</label>
+              <input type="email" id="smtpUsername" class="form-input-sm" placeholder="your-verified-email@domain.com"
+                     value="{{ settings.smtp_username or '' }}">
             </div>
           </div>
           <div class="row g-2 mt-2">
-            <div class="col-6">
-              <label class="form-label-sm">SMTP Username</label>
-              <input type="text" id="smtpUsername" class="form-input-sm" placeholder="username@example.com"
-                     value="{{ settings.smtp_username or '' }}">
-            </div>
-            <div class="col-6">
-              <label class="form-label-sm">SMTP Password</label>
-              <input type="password" id="smtpPassword" class="form-input-sm" placeholder="SMTP Password"
+            <div class="col-12">
+              <label class="form-label-sm">Brevo API Key</label>
+              <input type="password" id="smtpPassword" class="form-input-sm" placeholder="Brevo API Key (xkeysib-...)"
                      value="{{ settings.smtp_password or '' }}">
+              <div class="setting-desc" style="font-size: 11px; margin-top: 4px;">Outbound SMTP ports are blocked on Render Free tier, so email notifications are sent via Brevo HTTP API (Port 443).</div>
             </div>
+            <input type="hidden" id="smtpPort" value="587">
           </div>
         </div>
       </div>

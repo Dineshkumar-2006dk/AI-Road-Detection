@@ -1,16 +1,11 @@
 """
-Email Utility – SMTP with HTML report + image attachment
+Email Utility – Brevo HTTP API with HTML report + image attachment
 =========================================================
 """
 
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text      import MIMEText
-from email.mime.image     import MIMEImage
-from email.mime.base      import MIMEBase
-from email                import encoders
-from email.utils          import parseaddr
+import base64
+import requests
 from datetime             import datetime
 from flask                import current_app
 
@@ -22,14 +17,14 @@ def send_detection_report(
     user_settings = None,
 ) -> dict:
     """
-    Send a road damage detection report via SMTP.
+    Send a road damage detection report via Brevo Transactional Email HTTP API.
 
     Parameters
     ----------
     recipient_email   : destination email address
     detection_data    : dict with detection results
     result_image_path : absolute path to annotated result image
-    user_settings     : optional UserSettings object or dict to override default SMTP credentials
+    user_settings     : optional UserSettings object or dict to override default Brevo credentials
 
     Returns
     -------
@@ -38,10 +33,8 @@ def send_detection_report(
     cfg = current_app.config
 
     smtp_server   = cfg.get("SMTP_SERVER")
-    smtp_port     = cfg.get("SMTP_PORT",   587)
     smtp_user     = cfg.get("SMTP_USERNAME")
     smtp_password = cfg.get("SMTP_PASSWORD")
-    smtp_from     = cfg.get("SMTP_FROM",   smtp_user)
 
     if user_settings:
         def get_val(obj, attr, default=None):
@@ -50,22 +43,20 @@ def send_detection_report(
             return getattr(obj, attr, None) or default
 
         smtp_server   = get_val(user_settings, "smtp_server", smtp_server)
-        smtp_port     = get_val(user_settings, "smtp_port", smtp_port)
         smtp_user     = get_val(user_settings, "smtp_username", smtp_user)
         smtp_password = get_val(user_settings, "smtp_password", smtp_password)
-        smtp_from     = smtp_user
 
-    # Validate SMTP config
-    if not smtp_user or smtp_user == "your_email@gmail.com" or not smtp_password or smtp_password == "your_app_password_here":
-        return {"success": False,
-                "message": "SMTP not configured. Set SMTP credentials in the Settings page or environment variables."}
+    # Repurpose SMTP variables to Brevo
+    brevo_api_key = smtp_password
+    sender_email  = smtp_user
+    sender_name   = smtp_server or "RoadGuard AI"
 
-    # Build email
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "🚨 Road Damage Detection Report – RoadGuard AI"
-    msg["From"]    = smtp_from
-    msg["To"]      = recipient_email
-    envelope_from   = parseaddr(smtp_from)[1] or smtp_user
+    # Validate Brevo config
+    if not brevo_api_key or brevo_api_key in ("your_app_password_here", "") or not sender_email or sender_email in ("your_email@gmail.com", ""):
+        return {
+            "success": False,
+            "message": "Brevo HTTP API not configured. Please set your Brevo API Key and Sender Email in the Settings page."
+        }
 
     now       = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     condition = detection_data.get("road_condition", "Unknown")
@@ -148,8 +139,8 @@ def send_detection_report(
               </a>
             </td></tr>
 
-            <!-- Image -->
-            {"<tr><td style='padding:0 32px;'><img src='cid:result_img' width='100%' style='border-radius:8px;' alt='Detection Result'></td></tr>" if result_image_path and os.path.exists(result_image_path) else ""}
+            <!-- Image Note -->
+            {"<tr><td style='padding:16px 32px;color:#8b949e;text-align:center;font-size:13px;'>📎 The annotated detection image is attached to this email.</td></tr>" if result_image_path and os.path.exists(result_image_path) else ""}
 
             <!-- Footer -->
             <tr><td style="padding:24px 32px;text-align:center;
@@ -168,39 +159,49 @@ def send_detection_report(
     </html>
     """
 
-    msg_alt = MIMEMultipart("alternative")
-    msg_alt.attach(MIMEText(html_body, "html"))
-    msg.attach(msg_alt)
+    payload = {
+        "sender": {
+            "name": sender_name,
+            "email": sender_email
+        },
+        "to": [
+            {
+                "email": recipient_email
+            }
+        ],
+        "subject": "🚨 Road Damage Detection Report – RoadGuard AI",
+        "htmlContent": html_body
+    }
 
-    # Attach result image
     if result_image_path and os.path.exists(result_image_path):
-        with open(result_image_path, "rb") as img_file:
-            img_data = img_file.read()
-        img_mime = MIMEImage(img_data)
-        img_mime.add_header("Content-ID", "<result_img>")
-        img_mime.add_header("Content-Disposition", "inline",
-                            filename=os.path.basename(result_image_path))
-        msg.attach(img_mime)
+        try:
+            with open(result_image_path, "rb") as img_file:
+                img_data = img_file.read()
+            encoded_img = base64.b64encode(img_data).decode("utf-8")
+            payload["attachment"] = [
+                {
+                    "name": os.path.basename(result_image_path),
+                    "content": encoded_img
+                }
+            ]
+        except Exception as e:
+            current_app.logger.warning(f"Failed to read/encode attachment: {e}")
 
-    # Send
+    headers = {
+        "api-key": brevo_api_key,
+        "Content-Type": "application/json",
+        "accept": "application/json"
+    }
+
     try:
-        if int(smtp_port) == 465:
-            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=15)
+        response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=15)
+        if response.status_code in (200, 201, 202):
+            return {"success": True, "message": f"Report sent successfully to {recipient_email}"}
         else:
-            server = smtplib.SMTP(smtp_server, smtp_port, timeout=15)
-        with server:
-            server.ehlo()
-            if int(smtp_port) != 465:
-                server.starttls()
-                server.ehlo()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(envelope_from, [recipient_email], msg.as_string())
-        return {"success": True,
-                "message": f"Report sent successfully to {recipient_email}"}
-    except smtplib.SMTPAuthenticationError as e:
-        return {"success": False,
-                "message": f"SMTP authentication failed: {e.smtp_code} {e.smtp_error.decode(errors='ignore') if isinstance(e.smtp_error, bytes) else e.smtp_error}"}
-    except smtplib.SMTPException as e:
-        return {"success": False, "message": f"SMTP error: {str(e)}"}
+            try:
+                err_msg = response.json().get("message", response.text)
+            except Exception:
+                err_msg = response.text
+            return {"success": False, "message": f"Brevo API error ({response.status_code}): {err_msg}"}
     except Exception as e:
         return {"success": False, "message": f"Failed to send email: {str(e)}"}
