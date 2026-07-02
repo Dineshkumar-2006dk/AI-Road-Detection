@@ -11,7 +11,13 @@ from extensions import db, login_mgr, csrf
 
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    import sys
+    if getattr(sys, 'frozen', False):
+        template_folder = os.path.join(sys._MEIPASS, 'templates')
+        static_folder = os.path.join(sys._MEIPASS, 'static')
+        app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+    else:
+        app = Flask(__name__)
     app.config.from_object(config_class)
 
     # ── Create required directories ──────────────────────────────────────────
@@ -138,9 +144,76 @@ def _seed_admin(app):
 application = create_app()
 
 if __name__ == "__main__":
-    application.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=True,
-        use_reloader=False,  # Prevent double model load on Windows
-    )
+    import sys
+    # If running as a frozen desktop app
+    if getattr(sys, 'frozen', False):
+        import threading
+        import socket
+        import time
+        import subprocess
+        
+        # Start flask in a background thread
+        flask_thread = threading.Thread(
+            target=lambda: application.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False),
+            daemon=True
+        )
+        flask_thread.start()
+        
+        # Helper to check when port is ready
+        def is_port_ready(port):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                return s.connect_ex(('127.0.0.1', port)) == 0
+                
+        for _ in range(50):
+            if is_port_ready(5000):
+                break
+            time.sleep(0.2)
+            
+        # Launch browser in APP mode
+        url = "http://127.0.0.1:5000"
+        launched = False
+        
+        # Try MS Edge app mode
+        edge_paths = [
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        ]
+        for path in edge_paths:
+            if os.path.exists(path):
+                try:
+                    subprocess.run([path, f"--app={url}"])
+                    launched = True
+                    break
+                except Exception:
+                    pass
+                    
+        # Try Chrome app mode
+        if not launched:
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            ]
+            for path in chrome_paths:
+                if os.path.exists(path):
+                    try:
+                        subprocess.run([path, f"--app={url}"])
+                        launched = True
+                        break
+                    except Exception:
+                        pass
+                        
+        # Fallback to default browser
+        if not launched:
+            import webbrowser
+            webbrowser.open(url)
+            # Sleep to keep the main thread alive since default browser launch returns immediately
+            while True:
+                time.sleep(1)
+    else:
+        # Running in development mode
+        application.run(
+            host="0.0.0.0",
+            port=5000,
+            debug=True,
+            use_reloader=False,  # Prevent double model load on Windows
+        )

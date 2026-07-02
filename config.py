@@ -13,7 +13,8 @@ try:
 except Exception:
     pass
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+import sys
+BASE_DIR = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
