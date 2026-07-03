@@ -13,7 +13,7 @@ if sys.platform.startswith("win"):
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-PORT = 5000
+PORT = 5050
 URL = f"http://127.0.0.1:{PORT}"
 
 def is_port_in_use(port):

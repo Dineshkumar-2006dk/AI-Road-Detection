@@ -1,6 +1,6 @@
 import requests, re, os, sys, time
 
-BASE = "http://127.0.0.1:5000"
+BASE = "http://127.0.0.1:5050"
 errors = []
 
 def check(label, cond, detail=""):
