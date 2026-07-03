@@ -170,6 +170,7 @@ if __name__ == "__main__":
                 
         for _ in range(50):
             if is_port_ready(5000):
+                time.sleep(1.2)  # Give Flask an extra second to fully spin up
                 break
             time.sleep(0.2)
             
