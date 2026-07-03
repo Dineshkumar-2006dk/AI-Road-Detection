@@ -21,6 +21,10 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     # ── Create required directories ──────────────────────────────────────────
+    db_path = app.config.get("DATABASE_PATH")
+    if db_path:
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
     for folder in [
         app.config["UPLOAD_FOLDER"],
         app.config["RESULT_FOLDER"],
