@@ -231,26 +231,31 @@ class InstallerApp:
             self.root.quit()
 
     def create_shortcuts(self):
-        target_path = os.path.join(self.install_path, "RoadGuardAI.exe")
-        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop", "RoadGuard AI.lnk")
-        start_menu_dir = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs")
-        start_menu_path = os.path.join(start_menu_dir, "RoadGuard AI.lnk")
-        
-        shell = win32com.client.Dispatch("WScript.Shell")
-        
-        # Desktop Shortcut
-        shortcut = shell.CreateShortCut(desktop_path)
-        shortcut.Targetpath = target_path
-        shortcut.WorkingDirectory = self.install_path
-        shortcut.IconLocation = target_path
-        shortcut.save()
-        
-        # Start Menu Shortcut
-        shortcut_sm = shell.CreateShortCut(start_menu_path)
-        shortcut_sm.Targetpath = target_path
-        shortcut_sm.WorkingDirectory = self.install_path
-        shortcut_sm.IconLocation = target_path
-        shortcut_sm.save()
+        import pythoncom
+        pythoncom.CoInitialize()
+        try:
+            target_path = os.path.join(self.install_path, "RoadGuardAI.exe")
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop", "RoadGuard AI.lnk")
+            start_menu_dir = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs")
+            start_menu_path = os.path.join(start_menu_dir, "RoadGuard AI.lnk")
+            
+            shell = win32com.client.Dispatch("WScript.Shell")
+            
+            # Desktop Shortcut
+            shortcut = shell.CreateShortCut(desktop_path)
+            shortcut.Targetpath = target_path
+            shortcut.WorkingDirectory = self.install_path
+            shortcut.IconLocation = target_path
+            shortcut.save()
+            
+            # Start Menu Shortcut
+            shortcut_sm = shell.CreateShortCut(start_menu_path)
+            shortcut_sm.Targetpath = target_path
+            shortcut_sm.WorkingDirectory = self.install_path
+            shortcut_sm.IconLocation = target_path
+            shortcut_sm.save()
+        finally:
+            pythoncom.CoUninitialize()
 
     def create_success_screen(self):
         self.clear_screen()
