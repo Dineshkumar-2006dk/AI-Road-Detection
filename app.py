@@ -158,7 +158,7 @@ if __name__ == "__main__":
         
         # Start flask in a background thread
         flask_thread = threading.Thread(
-            target=lambda: application.run(host="127.0.0.1", port=5050, debug=False, use_reloader=False),
+            target=lambda: application.run(host="0.0.0.0", port=5050, debug=False, use_reloader=False),
             daemon=True
         )
         flask_thread.start()
@@ -170,12 +170,12 @@ if __name__ == "__main__":
                 
         for _ in range(50):
             if is_port_ready(5050):
-                time.sleep(1.2)  # Give Flask an extra second to fully spin up
+                time.sleep(1.5)  # Give Flask an extra time to fully spin up
                 break
             time.sleep(0.2)
             
         # Launch browser in APP mode
-        url = "http://127.0.0.1:5050"
+        url = "http://localhost:5050"
         launched = False
         
         # Try MS Edge app mode

@@ -14,7 +14,7 @@ if sys.platform.startswith("win"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 PORT = 5050
-URL = f"http://127.0.0.1:{PORT}"
+URL = f"http://localhost:{PORT}"
 
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
