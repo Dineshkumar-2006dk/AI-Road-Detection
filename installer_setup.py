@@ -235,25 +235,31 @@ class InstallerApp:
         pythoncom.CoInitialize()
         try:
             target_path = os.path.join(self.install_path, "RoadGuardAI.exe")
-            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop", "RoadGuard AI.lnk")
-            start_menu_dir = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs")
-            start_menu_path = os.path.join(start_menu_dir, "RoadGuard AI.lnk")
-            
-            shell = win32com.client.Dispatch("WScript.Shell")
-            
-            # Desktop Shortcut
-            shortcut = shell.CreateShortCut(desktop_path)
-            shortcut.Targetpath = target_path
-            shortcut.WorkingDirectory = self.install_path
-            shortcut.IconLocation = target_path
-            shortcut.save()
-            
-            # Start Menu Shortcut
-            shortcut_sm = shell.CreateShortCut(start_menu_path)
-            shortcut_sm.Targetpath = target_path
-            shortcut_sm.WorkingDirectory = self.install_path
-            shortcut_sm.IconLocation = target_path
-            shortcut_sm.save()
+            try:
+                shell = win32com.client.Dispatch("WScript.Shell")
+                
+                # Dynamically fetch special folders (handles OneDrive redirection, etc.)
+                desktop_dir = shell.SpecialFolders("Desktop")
+                programs_dir = shell.SpecialFolders("Programs")
+                
+                desktop_path = os.path.normpath(os.path.join(desktop_dir, "RoadGuard AI.lnk"))
+                start_menu_path = os.path.normpath(os.path.join(programs_dir, "RoadGuard AI.lnk"))
+                
+                # Desktop Shortcut
+                shortcut = shell.CreateShortCut(desktop_path)
+                shortcut.Targetpath = target_path
+                shortcut.WorkingDirectory = self.install_path
+                shortcut.IconLocation = target_path
+                shortcut.save()
+                
+                # Start Menu Shortcut
+                shortcut_sm = shell.CreateShortCut(start_menu_path)
+                shortcut_sm.Targetpath = target_path
+                shortcut_sm.WorkingDirectory = self.install_path
+                shortcut_sm.IconLocation = target_path
+                shortcut_sm.save()
+            except Exception as e:
+                print(f"Warning: Could not create shortcuts: {e}")
         finally:
             pythoncom.CoUninitialize()
 
