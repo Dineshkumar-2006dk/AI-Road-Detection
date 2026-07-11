@@ -62,6 +62,10 @@
            class="nav-link {% if request.endpoint == 'map.road_map' %}active{% endif %}">
       <i class="fas fa-map-location-dot"></i><span>Road Map</span>
     </a></li>
+    <li><a href="{{ url_for('detection.realtime_evaluation') }}"
+           class="nav-link {% if request.endpoint == 'detection.realtime_evaluation' %}active{% endif %}">
+      <i class="fas fa-cubes"></i><span>Real-Time Evaluation</span>
+    </a></li>
     <li><a href="{{ url_for('settings.features') }}"
            class="nav-link {% if request.endpoint == 'settings.features' %}active{% endif %}">
       <i class="fas fa-star"></i><span>Features</span>

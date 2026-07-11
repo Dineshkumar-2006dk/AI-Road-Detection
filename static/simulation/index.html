@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Road Guard - 3D Photorealistic Smart Car Prototype</title>
+    <style>
+        :root {
+            --primary: #00ffcc;
+            --primary-glow: rgba(0, 255, 204, 0.3);
+            --bg-dark: #070911;
+            --panel-bg: rgba(12, 16, 26, 0.85);
+            --text-light: #f3f4f6;
+            --border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Dashboard Panel */
+        .dashboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h1::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #8a99ad;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            color: var(--primary);
+            margin: 15px 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+            padding-bottom: 4px;
+        }
+
+        .status-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.88rem;
+        }
+
+        .status-label {
+            color: #8a99ad;
+        }
+
+        .status-value {
+            font-weight: 600;
+        }
+
+        .status-active {
+            color: #00ffcc;
+            text-shadow: 0 0 5px rgba(0, 255, 204, 0.4);
+        }
+
+        .status-alert {
+            color: #ffaa00;
+            text-shadow: 0 0 5px rgba(255, 170, 0, 0.4);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.15), rgba(0, 255, 204, 0.03));
+            border: 1px solid var(--primary);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.3), rgba(0, 255, 204, 0.08));
+            box-shadow: 0 0 15px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.active {
+            border-color: var(--primary);
+            background: rgba(0, 255, 204, 0.22);
+            color: #00ffcc;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.25);
+        }
+
+        .btn-alert {
+            border-color: #ff5500;
+            background: linear-gradient(135deg, rgba(255, 85, 0, 0.15), rgba(255, 85, 0, 0.03));
+        }
+
+        .btn-alert.active {
+            border-color: #ff5500;
+            background: rgba(255, 85, 0, 0.22);
+            color: #ff5500;
+            box-shadow: 0 0 10px rgba(255, 85, 0, 0.25);
+        }
+
+        .btn-alert:hover {
+            background: linear-gradient(135deg, rgba(255, 85, 0, 0.3), rgba(255, 85, 0, 0.08));
+            box-shadow: 0 0 15px rgba(255, 85, 0, 0.25);
+        }
+
+        .lang-selector {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .lang-btn {
+            flex: 1;
+            padding: 6px;
+            font-size: 0.8rem;
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .lang-btn.active {
+            border-color: var(--primary);
+            background: rgba(0, 255, 204, 0.15);
+            color: var(--primary);
+        }
+
+        /* Instruction Box */
+        .instruction-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(7, 9, 18, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 10px 25px;
+            border-radius: 30px;
+            z-index: 10;
+            pointer-events: none;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            font-size: 0.85rem;
+            color: #a0aec0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+        }
+
+        .instruction-box span {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .view-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 15px;
+            z-index: 10;
+            font-size: 0.8rem;
+            color: #8a99ad;
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="dashboard">
+        <h1>AI ROAD GUARD</h1>
+        <div class="subtitle">Optimized Active Avoidance</div>
+
+        <div class="section-title">Voice Language / மொழி</div>
+        <div class="lang-selector">
+            <button id="lang-en" class="lang-btn active">🇺🇸 English</button>
+            <button id="lang-ta" class="lang-btn">🇮🇳 தமிழ்</button>
+        </div>
+
+        <div class="section-title">System Status</div>
+        <div class="status-container">
+            <div class="status-item">
+                <span class="status-label">Sim Phase</span>
+                <span class="status-value" id="sim-phase-txt" style="color:#fff;">Normal Driving</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Road Status</span>
+                <span class="status-value status-active" id="road-status">DRIVING</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Infrastructure</span>
+                <span class="status-value status-active" id="tower-scan-status">Smart Pole Active</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Steer Dodge</span>
+                <span class="status-value" id="hazard-status" style="color: #00ffcc;">Center Lane</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Road Width</span>
+                <span class="status-value" id="width-status" style="color:#fff;">Wide (4.6m)</span>
+            </div>
+        </div>
+
+        <div class="section-title">Controls</div>
+        <div class="controls">
+            <button id="btn-spin">🔄 Auto-Rotate View</button>
+            <button id="btn-drive" class="active">🚗 Start Auto Drive Simulation</button>
+            <button id="btn-landslide" class="btn-alert">⛰️ Trigger Landslide (Manual)</button>
+        </div>
+    </div>
+
+    <div class="view-indicator">
+        Display: <span style="color:#fff; font-weight:bold;">Lag-Free 3D Simulator</span>
+    </div>
+
+    <div class="instruction-box">
+        Drag with <span>Left Click</span> to Rotate Car | <span>Right Click</span> to Pan | Scroll to <span>Zoom</span>
+    </div>
+
+    <!-- Import Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Setup Scene
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c0f18);
+        scene.fog = new THREE.FogExp2(0x0c0f18, 0.05);
+
+        // Setup Camera
+        const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(5.5, 4.2, 7.5);
+
+        // Setup Renderer with Performance Optimization
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(1.0); // Set pixel ratio to 1.0 to eliminate lag completely on high-res displays
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.05;
+        container.appendChild(renderer.domElement);
+
+        // Setup Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 3;
+        controls.maxDistance = 14;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.autoRotate = false;
+        controls.autoRotateSpeed = 1.2;
+
+        // --- LANGUAGE CONFIGURATION ---
+        let voiceLanguage = 'en'; // 'en' or 'ta'
+        let spokenHazardsMap = {}; // Tracks spoken audio per obstacle to prevent repeating
+
+        document.getElementById('lang-en').addEventListener('click', () => {
+            voiceLanguage = 'en';
+            document.getElementById('lang-en').className = 'lang-btn active';
+            document.getElementById('lang-ta').className = 'lang-btn';
+        });
+
+        document.getElementById('lang-ta').addEventListener('click', () => {
+            voiceLanguage = 'ta';
+            document.getElementById('lang-ta').className = 'lang-btn active';
+            document.getElementById('lang-en').className = 'lang-btn';
+        });
+
+        // --- BUTTON EVENT LISTENERS ---
+        document.getElementById('btn-spin').addEventListener('click', () => {
+            controls.autoRotate = !controls.autoRotate;
+            document.getElementById('btn-spin').classList.toggle('active', controls.autoRotate);
+        });
+
+        document.getElementById('btn-drive').addEventListener('click', () => {
+            isDriving = !isDriving;
+            document.getElementById('btn-drive').classList.toggle('active', isDriving);
+        });
+
+        document.getElementById('btn-landslide').addEventListener('click', () => {
+            simulationPhase = 1; // Force trigger landslide phase
+            phaseTimer = 0;
+            isDriving = true;
+            document.getElementById('btn-drive').classList.add('active'); // Keep active style
+            spokenHazardsMap = {}; // Reset spoken warnings so it repeats alert for the boulder
+            
+            const btn = document.getElementById('btn-landslide');
+            btn.classList.add('active');
+            setTimeout(() => {
+                btn.classList.remove('active');
+            }, 1000);
+        });
+
+        // --- PHOTOREALISTIC TEXTURE GENERATORS ---
+        function createWoodTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512; // Optimized from 1024
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 512, 0);
+            grad.addColorStop(0, '#311f11'); grad.addColorStop(0.5, '#3d2817'); grad.addColorStop(1, '#2a1a0d');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 512, 512);
+            ctx.strokeStyle = 'rgba(15, 8, 3, 0.4)';
+            for (let i = 0; i < 100; i++) { // Optimized iterations
+                ctx.lineWidth = 1 + Math.random() * 2;
+                ctx.beginPath();
+                let y = Math.random() * 512;
+                ctx.moveTo(0, y);
+                ctx.bezierCurveTo(128, y + (Math.random() * 20 - 10), 384, y + (Math.random() * 20 - 10), 512, y);
+                ctx.stroke();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createTireTreadTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 64; // Optimized
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 128, 64);
+            ctx.fillStyle = '#000000'; ctx.lineWidth = 3;
+            for(let y=0; y<64; y+=8) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(64, y + 10); ctx.lineTo(128, y); ctx.stroke();
+            }
+            ctx.fillRect(59, 0, 10, 64);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(6, 1);
+            return tex;
+        }
+
+        function createBreadboardTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 256; // Optimized
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fdfdfd'; ctx.fillRect(0, 0, 512, 256);
+            ctx.fillStyle = '#d32f2f'; ctx.fillRect(10, 15, 492, 3);
+            ctx.fillStyle = '#1976d2'; ctx.fillRect(10, 235, 492, 3);
+            ctx.fillStyle = '#222222';
+            for(let x=30; x<490; x+=14) {
+                ctx.fillRect(x, 25, 4, 4); ctx.fillRect(x, 35, 4, 4);
+                for(let y=65; y<=115; y+=12) ctx.fillRect(x, y, 4, 4);
+                for(let y=140; y<=190; y+=12) ctx.fillRect(x, y, 4, 4);
+                ctx.fillRect(x, 215, 4, 4); ctx.fillRect(x, 225, 4, 4);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createPiPCBTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 384; // Optimized
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#063f18'; ctx.fillRect(0, 0, 512, 384);
+            ctx.strokeStyle = '#0b5b22'; ctx.lineWidth = 2;
+            for(let i=0; i<30; i++) {
+                ctx.beginPath(); ctx.moveTo(Math.random()*512, Math.random()*384); ctx.lineTo(Math.random()*512, Math.random()*384); ctx.stroke();
+            }
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px monospace';
+            ctx.fillText('Raspberry Pi 4 Model B', 40, 40);
+            ctx.fillText('v1.2 © 2018', 40, 60);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createGrillTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, 128, 128);
+            ctx.strokeStyle = '#999999';
+            ctx.lineWidth = 2.5;
+            for(let i=0; i<128; i+=6) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 128); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(128, i); ctx.stroke();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createAcrylicTextTexture(text, width, height) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 26px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, width / 2, height / 2);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const woodTexture = createWoodTexture();
+        const tireTreadTexture = createTireTreadTexture();
+        const bbTexture = createBreadboardTexture();
+        const pcbTexture = createPiPCBTexture();
+        const grillTexture = createGrillTexture();
+
+        // --- GLOBAL GEOMETRIES & MATERIALS ---
+        const silverMetalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.95, roughness: 0.15 });
+        const portMetalMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.95, roughness: 0.1 });
+        const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.18 });
+        const yellowSpokesMat = new THREE.MeshStandardMaterial({ color: 0xffd200, roughness: 0.35, metalness: 0.15 });
+        const pillarBlueMat = new THREE.MeshStandardMaterial({ color: 0x0066ff, metalness: 0.8, roughness: 0.25 });
+        
+        const rubberTireMat = new THREE.MeshStandardMaterial({ 
+            color: 0x1b1c1e, roughness: 0.85, metalness: 0.05, bumpMap: tireTreadTexture, bumpScale: 0.035
+        });
+
+        const usEyeGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.24, 16); // Optimized segments from 32 to 16
+        const usEyeMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.15 });
+        const grillGeo = new THREE.CylinderGeometry(0.17, 0.17, 0.01, 16);
+        const grillMat = new THREE.MeshStandardMaterial({ map: grillTexture, roughness: 0.8 });
+        const usPinGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.22, 4);
+
+        const pinHeaderGeo = new THREE.BoxGeometry(0.06, 0.16, 0.06);
+        const pinHeaderMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+
+        const redLedGlass = new THREE.MeshPhysicalMaterial({ color: 0xff3333, roughness: 0.05, transmission: 0.8, thickness: 0.2 });
+        const greenLedGlass = new THREE.MeshPhysicalMaterial({ color: 0x33ff33, roughness: 0.05, transmission: 0.8, thickness: 0.2 });
+        const ledBaseMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9 });
+        const bbMat = new THREE.MeshStandardMaterial({ map: bbTexture, roughness: 0.9, metalness: 0.05 });
+
+        // --- SHADOW-OPTIMIZED DIRECTIONAL LIGHTS ---
+        const keyLight = new THREE.DirectionalLight(0xfff6ee, 1.5);
+        keyLight.position.set(4, 9, 3.5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 512; // Reduced to 512 to achieve 60fps butter-smooth rendering
+        keyLight.shadow.mapSize.height = 512;
+        keyLight.shadow.bias = -0.0002;
+        keyLight.shadow.radius = 3;
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        rimLight.position.set(-3, 6, 8);
+        scene.add(rimLight);
+
+        const fillLight = new THREE.DirectionalLight(0xccddff, 0.35);
+        fillLight.position.set(-6, 3, -6);
+        scene.add(fillLight);
+
+        const towerBlinkLED = new THREE.PointLight(0xff0000, 0, 3);
+        scene.add(towerBlinkLED);
+
+        const laserSpotLight = new THREE.SpotLight(0x00ffcc, 0, 15, Math.PI/5, 0.4, 1);
+        laserSpotLight.position.set(1.95, 0.95, 0);
+        scene.add(laserSpotLight);
+
+        // --- WINDING ROAD GENERATOR (WIDER ROAD TO ACCOMMODATE EASY DODGING, AS REQUESTED) ---
+        const roadPoints = [];
+        for (let i = -12; i <= 12; i += 0.4) {
+            const zVal = Math.sin(i * 0.35) * 1.0;
+            roadPoints.push(new THREE.Vector3(i, -1.09, zVal));
+        }
+        const roadCurve = new THREE.CatmullRomCurve3(roadPoints);
+        
+        const roadShape = new THREE.Shape();
+        roadShape.moveTo(0, -4.0); // Widen road to 8.0m (Z = -4.0 to 4.0) - DOUBLED in width as requested!
+        roadShape.lineTo(0, 4.0);
+
+        const roadExtrudeSettings = { steps: 30, bevelEnabled: false, extrudePath: roadCurve }; // Reduced steps to prevent lag
+
+        const roadCanvas = document.createElement('canvas');
+        roadCanvas.width = 512; roadCanvas.height = 128; // Optimized
+        const rCtx = roadCanvas.getContext('2d');
+        rCtx.fillStyle = '#1e2126'; rCtx.fillRect(0, 0, 512, 128);
+        rCtx.strokeStyle = '#0d0e12'; rCtx.lineWidth = 2;
+        for(let i=0; i<4; i++) {
+            let x = 50 + i * 120 + Math.random()*40; let y = 20 + Math.random()*20;
+            rCtx.beginPath(); rCtx.moveTo(x, y); rCtx.lineTo(x + 15, y + 20); rCtx.stroke();
+        }
+        const roadText = new THREE.CanvasTexture(roadCanvas);
+        roadText.wrapS = THREE.RepeatWrapping; roadText.repeat.set(5, 1);
+
+        const roadMesh = new THREE.Mesh(
+            new THREE.ExtrudeGeometry(roadShape, roadExtrudeSettings),
+            new THREE.MeshStandardMaterial({ map: roadText, roughness: 0.85, metalness: 0.05 })
+        );
+        roadMesh.receiveShadow = true;
+        scene.add(roadMesh);
+
+        // Stripes
+        const stripes = [];
+        const stripeGeo = new THREE.BoxGeometry(0.8, 0.006, 0.12);
+        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.7 });
+        const spacedPoints = roadCurve.getSpacedPoints(20);
+        spacedPoints.forEach((pt, idx) => {
+            if (idx > 0 && idx < 20 && idx % 2 === 0) {
+                const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+                stripe.position.copy(pt); stripe.position.y = -1.075;
+                const tangent = roadCurve.getTangentAt(idx / 20);
+                stripe.rotation.y = Math.atan2(-tangent.z, tangent.x);
+                scene.add(stripe); stripes.push(stripe);
+            }
+        });
+
+        // --- TWO SCROLLING SMART MONITORING TOWERS (LOOPING ROAD INFRAS, AS REQUESTED) ---
+        const towerGroup1 = new THREE.Group();
+        const towerGroup2 = new THREE.Group();
+        towerGroup1.position.set(4.0, -1.09, -3.2); // Further off side to widen
+        towerGroup2.position.set(10.5, -1.09, -3.2);
+        scene.add(towerGroup1, towerGroup2);
+
+        function assembleTower(group) {
+            const tBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 }));
+            const tMast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 4.5, 8), new THREE.MeshStandardMaterial({ color: 0x22262d, metalness: 0.85 }));
+            tMast.position.y = 2.25;
+            const tArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0x22262d, metalness: 0.85 }));
+            tArm.rotation.z = Math.PI / 2; tArm.position.set(0.9, 4.2, 0.6);
+            group.add(tBase, tMast, tArm);
+
+            const solarPanel = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 1.0), new THREE.MeshStandardMaterial({ color: 0x0a1a3a, metalness: 0.9 }));
+            solarPanel.position.set(0, 4.5, 0); solarPanel.rotation.x = Math.PI / 6;
+            const tCamHousing = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.2, 0.4), new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.2 }));
+            tCamHousing.position.set(1.6, 4.0, 0.6); tCamHousing.rotation.x = Math.PI / 7;
+            const tCamLens = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshPhysicalMaterial({ color: 0x021144, transmission: 0.4 }));
+            tCamLens.position.set(1.6, 3.9, 0.78);
+            group.add(solarPanel, tCamHousing, tCamLens);
+        }
+        assembleTower(towerGroup1); assembleTower(towerGroup2);
+
+        // Warm light source under street lamp (Only one active for performance)
+        const streetLampLight = new THREE.SpotLight(0xfff0b3, 1.0, 8, Math.PI/4, 0.5, 1);
+        streetLampLight.position.set(4.0 + 0.9, -1.09 + 4.0, -3.2 + 0.6);
+        streetLampLight.target.position.set(4.0 + 0.9, -1.09, -3.2 + 0.6);
+        scene.add(streetLampLight);
+
+        // --- TWO HOLOGRAPHIC ROAD BILLBOARD DISPLAYS (SCROLLING ON LEFT SIDE) ---
+        const billboardCanvas = document.createElement('canvas');
+        billboardCanvas.width = 256; billboardCanvas.height = 128; // Optimized from 512 to prevent rendering lag
+        const bldCtx = billboardCanvas.getContext('2d');
+        const billboardTexture = new THREE.CanvasTexture(billboardCanvas);
+
+        const billboardGroup1 = new THREE.Group();
+        billboardGroup1.position.set(7.5, 0.2, -3.0);
+        scene.add(billboardGroup1);
+
+        const billboardGroup2 = new THREE.Group();
+        billboardGroup2.position.set(14.5, 0.2, -3.0);
+        scene.add(billboardGroup2);
+
+        function createBillboardMesh(grp) {
+            const bPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+            bPillar.position.set(0, -0.4, 0);
+            const billboardFrame = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.6, 0.12), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.2 }));
+            billboardFrame.position.y = 0.8;
+            const billboardScreen = new THREE.Mesh(new THREE.PlaneGeometry(2.85, 1.45), new THREE.MeshBasicMaterial({ map: billboardTexture }));
+            billboardScreen.position.set(0, 0.8, 0.07);
+            grp.add(bPillar, billboardFrame, billboardScreen);
+        }
+        createBillboardMesh(billboardGroup1); createBillboardMesh(billboardGroup2);
+
+        function updateBillboard(alert, statusText, subText, hazardColor) {
+            bldCtx.fillStyle = '#03050c'; bldCtx.fillRect(0, 0, 256, 128);
+            bldCtx.strokeStyle = alert ? hazardColor : '#00ffcc'; bldCtx.lineWidth = 4; bldCtx.strokeRect(5, 5, 246, 118);
+            bldCtx.fillStyle = '#8a99ad'; bldCtx.font = 'bold 9px Segoe UI, Arial'; bldCtx.fillText('AI ACTIVE DODGE PROT', 15, 22);
+            
+            if (alert) {
+                bldCtx.fillStyle = hazardColor; bldCtx.font = 'bold 15px Segoe UI, Arial'; bldCtx.fillText(statusText.substring(0,25), 15, 55);
+                bldCtx.fillStyle = '#ffffff'; bldCtx.font = 'bold 11px Segoe UI, Arial'; bldCtx.fillText(subText.substring(0,30), 15, 80);
+                bldCtx.fillStyle = '#8a99ad'; bldCtx.font = '8px Segoe UI, Arial'; bldCtx.fillText('STEER DODGE INTERACTION ACTIVE', 15, 105);
+            } else {
+                bldCtx.fillStyle = '#00ffcc'; bldCtx.font = 'bold 15px Segoe UI, Arial'; bldCtx.fillText('ROAD STATUS: CLEAR', 15, 55);
+                bldCtx.fillStyle = '#8a99ad'; bldCtx.font = '10px Segoe UI, Arial'; bldCtx.fillText('SCANNING FOR TRAFFIC HAZARDS...', 15, 80);
+                bldCtx.fillStyle = '#558877'; bldCtx.font = '8px Segoe UI, Arial'; bldCtx.fillText('Voice Alerts Enabled | Tamil & English', 15, 105);
+            }
+            billboardTexture.needsUpdate = true;
+        }
+        updateBillboard(false, 'SYSTEM RUNNING', 'CLEAR');
+
+        // --- ROBOT CAR CONFIGURATION DATA ---
+        const bluePillarsOffsets = [
+            [-1.9, 0.45, 1.05], [-1.9, 0.45, -1.05], [1.9, 0.45, 1.05], [1.9, 0.45, -1.05]
+        ];
+        const wheelPositions = [
+            [-1.2, -0.18, 1.4], [1.2, -0.18, 1.4], [-1.2, -0.18, -1.4], [1.2, -0.18, -1.4]
+        ];
+        const cellOffsetsZ = [-0.36, 0, 0.36];
+
+        // --- ROBOT CAR ---
+        const robotCar = new THREE.Group();
+        robotCar.position.set(0, -0.65, 0);
+        scene.add(robotCar);
+
+        // Acrylic Plates
+        const widthVal = 4.1, lengthVal = 2.45, radiusVal = 0.28;
+        const plateShape = new THREE.Shape();
+        plateShape.moveTo(-widthVal/2 + radiusVal, -lengthVal/2); plateShape.lineTo(widthVal/2 - radiusVal, -lengthVal/2);
+        plateShape.quadraticCurveTo(widthVal/2, -lengthVal/2, widthVal/2, -lengthVal/2 + radiusVal); plateShape.lineTo(widthVal/2, lengthVal/2 - radiusVal);
+        plateShape.quadraticCurveTo(widthVal/2, lengthVal/2, widthVal/2 - radiusVal, lengthVal/2); plateShape.lineTo(-widthVal/2 + radiusVal, lengthVal/2);
+        plateShape.quadraticCurveTo(-widthVal/2, lengthVal/2, -widthVal/2, lengthVal/2 - radiusVal); plateShape.lineTo(-widthVal/2, -lengthVal/2 + radiusVal);
+        plateShape.quadraticCurveTo(-widthVal/2, -lengthVal/2, -widthVal/2 + radiusVal, -lengthVal/2);
+
+        const extrudeSettings = { depth: 0.07, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.015, bevelThickness: 0.015 }; // Optimized bevel segments
+        const plateGeo = new THREE.ExtrudeGeometry(plateShape, extrudeSettings);
+        plateGeo.center();
+
+        const acrylicMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.02, transmission: 0.9, ior: 1.5, thickness: 0.5, clearcoat: 0.5
+        });
+
+        const bPlate = new THREE.Mesh(plateGeo, acrylicMaterial);
+        bPlate.rotation.x = Math.PI / 2; bPlate.position.y = 0.05;
+        bPlate.castShadow = true; bPlate.receiveShadow = true;
+        robotCar.add(bPlate);
+
+        const tPlate = new THREE.Mesh(plateGeo, acrylicMaterial);
+        tPlate.rotation.x = Math.PI / 2; tPlate.position.y = 0.85;
+        tPlate.castShadow = true; tPlate.receiveShadow = true;
+        robotCar.add(tPlate);
+
+        // Text overlays
+        const frontTextPlate = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.22), new THREE.MeshBasicMaterial({ map: createAcrylicTextTexture('AI ROAD DETECT PROTOTYPE V1.0', 256, 32), transparent: true, opacity: 0.95 }));
+        frontTextPlate.position.set(2.06, 0.06, 0); frontTextPlate.rotation.y = Math.PI / 2;
+        const sideTextPlate = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.2), new THREE.MeshBasicMaterial({ map: createAcrylicTextTexture('RASPBERRY PI 4', 256, 32), transparent: true, opacity: 0.95 }));
+        sideTextPlate.position.set(0.2, 0.86, 1.23);
+        const lipoTextPlate = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.2), new THREE.MeshBasicMaterial({ map: createAcrylicTextTexture('LIPO PACK', 128, 32), transparent: true, opacity: 0.95 }));
+        lipoTextPlate.position.set(-1.0, 0.06, 1.23);
+        const driverTextPlate = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.2), new THREE.MeshBasicMaterial({ map: createAcrylicTextTexture('MOTOR DRIVER', 128, 32), transparent: true, opacity: 0.95 }));
+        driverTextPlate.position.set(1.0, 0.06, 1.23);
+        robotCar.add(frontTextPlate, sideTextPlate, lipoTextPlate, driverTextPlate);
+
+        // Blue corner pillars
+        const supportPillarGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8); // Optimized segments
+        bluePillarsOffsets.forEach(pos => {
+            const pillar = new THREE.Mesh(supportPillarGeo, pillarBlueMat);
+            pillar.position.set(pos[0], pos[1], pos[2]); pillar.castShadow = true;
+            robotCar.add(pillar);
+        });
+
+        // Wheels
+        const wheelGroup = new THREE.Group();
+        robotCar.add(wheelGroup);
+        const wheels = [];
+        wheelPositions.forEach(pos => {
+            const wUnit = new THREE.Group();
+            wUnit.position.set(pos[0], pos[1], pos[2]);
+            const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.36, 16), rubberTireMat); // Optimized segments
+            tire.rotation.x = Math.PI / 2; tire.castShadow = true;
+            const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.37, 16), yellowSpokesMat);
+            rim.rotation.x = Math.PI / 2;
+            const centerNut = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.39, 5), silverMetalMat);
+            centerNut.rotation.x = Math.PI / 2;
+            wUnit.add(tire, rim, centerNut);
+
+            for(let i=0; i<5; i++) {
+                const angle = (i * Math.PI * 2) / 5;
+                const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.42, 0.37), yellowSpokesMat);
+                spoke.position.set(Math.sin(angle)*0.22, Math.cos(angle)*0.22, 0); spoke.rotation.z = -angle;
+                wUnit.add(spoke);
+            }
+            const motorBox = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.44, 0.44), yellowSpokesMat);
+            motorBox.position.set(0, 0.05, -pos[2]*0.2); motorBox.castShadow = true;
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8), silverMetalMat);
+            shaft.rotation.x = Math.PI / 2; shaft.position.set(0, 0.05, -pos[2]*0.1);
+            wUnit.add(motorBox, shaft);
+
+            wheelGroup.add(wUnit);
+            wheels.push(wUnit);
+        });
+
+        // Battery Holder
+        const battHolderGroup = new THREE.Group(); battHolderGroup.position.set(-0.6, 0.12, 0.0); robotCar.add(battHolderGroup);
+        const battHolder = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.28, 1.25), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }));
+        battHolderGroup.add(battHolder);
+        const blueCellMat = new THREE.MeshStandardMaterial({ color: 0x0055ff, roughness: 0.25, metalness: 0.3 });
+        const cellCapMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.95 });
+        cellOffsetsZ.forEach(zVal => {
+            const cell = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.4, 16), blueCellMat);
+            cell.rotation.z = Math.PI / 2; cell.position.set(0, 0.12, zVal); cell.castShadow = true;
+            const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 12), cellCapMat);
+            cap.rotation.z = Math.PI / 2; cap.position.set(0.72, 0.12, zVal);
+            battHolderGroup.add(cell, cap);
+        });
+
+        // Motor Driver (L298N)
+        const motorDriverGroup = new THREE.Group(); motorDriverGroup.position.set(0.8, 0.1, 0.4); robotCar.add(motorDriverGroup);
+        const driverPCB = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 0.8), new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.7 }));
+        const heatsinkRedMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, metalness: 0.8, roughness: 0.3 });
+        const hsBase = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.32, 0.25), heatsinkRedMat); hsBase.position.y = 0.16;
+        motorDriverGroup.add(driverPCB, hsBase);
+        for(let i=-0.08; i<=0.08; i+=0.04) {
+            const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.32, 0.25), heatsinkRedMat); fin.position.set(i, 0.16, 0.1); motorDriverGroup.add(fin);
+        }
+        const termMat = new THREE.MeshStandardMaterial({ color: 0x0055dd });
+        const term1 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 0.12), termMat); term1.position.set(-0.25, 0.08, 0.3);
+        const term2 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 0.12), termMat); term2.position.set(0, 0.08, 0.3);
+        const term3 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 0.12), termMat); term3.position.set(0.25, 0.08, 0.3);
+        motorDriverGroup.add(term1, term2, term3);
+        const capDrvMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 });
+        const drvCap1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 8), capDrvMat); drvCap1.position.set(-0.25, 0.09, -0.2);
+        const drvCap2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 8), capDrvMat); drvCap2.position.set(0.25, 0.09, -0.2);
+        motorDriverGroup.add(drvCap1, drvCap2);
+
+        // Switch
+        const switchGroup = new THREE.Group(); switchGroup.position.set(1.0, 0.1, 0.95); robotCar.add(switchGroup);
+        const switchBody = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.18), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }));
+        const switchLever = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.06), silverMetalMat);
+        switchLever.position.set(0, 0.1, 0); switchGroup.add(switchBody, switchLever);
+
+        // Breadboard
+        const bbGroup = new THREE.Group(); bbGroup.position.set(-0.7, 0.96, 0.5); robotCar.add(bbGroup);
+        const breadboardMesh = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.12, 1.05), bbMat); bbGroup.add(breadboardMesh);
+
+        // LEDs
+        const redLed = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 8), redLedGlass); redLed.position.set(0.4, 0.2, -0.2);
+        const redDome = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), redLedGlass); redDome.position.set(0.4, 0.29, -0.2);
+        const redLegs = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.15, 4), ledBaseMat); redLegs.position.set(0.4, 0.09, -0.2);
+        bbGroup.add(redLed, redDome, redLegs);
+        const greenLed = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 8), greenLedGlass); greenLed.position.set(0.6, 0.2, -0.2);
+        const greenDome = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), greenLedGlass); greenDome.position.set(0.6, 0.29, -0.2);
+        const greenLegs = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.15, 4), ledBaseMat); greenLegs.position.set(0.6, 0.09, -0.2);
+        bbGroup.add(greenLed, greenDome, greenLegs);
+
+        const resistorBodyMat = new THREE.MeshStandardMaterial({ color: 0xddcc99, roughness: 0.6 });
+        const resistor = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.16, 8), resistorBodyMat); resistor.rotation.z = Math.PI / 2; resistor.position.set(0.2, 0.12, 0.1);
+        bbGroup.add(resistor);
+        const resWireGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.08, 0.06, 0.1), new THREE.Vector3(0.12, 0.12, 0.1), new THREE.Vector3(0.28, 0.12, 0.1), new THREE.Vector3(0.32, 0.06, 0.1)]), 8, 0.008, 4, false);
+        const resWire = new THREE.Mesh(resWireGeo, ledBaseMat); bbGroup.add(resWire);
+
+        // Raspberry Pi
+        const piPCB = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.05, 1.28), new THREE.MeshStandardMaterial({ map: pcbTexture, roughness: 0.7 }));
+        piPCB.position.set(0.7, 0.9, -0.42);
+        robotCar.add(piPCB);
+
+        const usbDoublePort = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.35, 0.35), portMetalMat); usbDoublePort.position.set(1.38, 1.1, -0.1);
+        const usbSinglePort = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.35, 0.35), portMetalMat); usbSinglePort.position.set(1.38, 1.1, -0.52);
+        const ethernetPort = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.38, 0.38), portMetalMat); ethernetPort.position.set(1.35, 1.115, -0.86);
+        robotCar.add(usbDoublePort, usbSinglePort, ethernetPort);
+
+        const heatsink = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.15, 0.34), silverMetalMat); heatsink.position.set(0.55, 1.03, -0.32); robotCar.add(heatsink);
+        const gpioBase = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.15, 0.1), new THREE.MeshStandardMaterial({ color: 0x1e1e1e })); gpioBase.position.set(0.6, 1.0, -0.94); robotCar.add(gpioBase);
+        const goldCyl = new THREE.CylinderGeometry(0.015, 0.015, 0.25, 4);
+        for(let i = -0.45; i <= 0.45; i += 0.12) { // Optimized pin count
+            const p1 = new THREE.Mesh(goldCyl, brassMat); p1.position.set(0.6 + i, 1.1, -0.96);
+            const p2 = new THREE.Mesh(goldCyl, brassMat); p2.position.set(0.6 + i, 1.1, -0.92);
+            robotCar.add(p1, p2);
+        }
+
+        // Ultrasonic Sensor
+        const usSensorGroup = new THREE.Group(); usSensorGroup.position.set(1.9, 0.95, 0.0); robotCar.add(usSensorGroup);
+        const usBoardMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.48, 1.0), new THREE.MeshStandardMaterial({ color: 0x1565c0 })); usSensorGroup.add(usBoardMesh);
+        const eyeLMesh = new THREE.Mesh(usEyeGeo, usEyeMat); eyeLMesh.rotation.z = Math.PI / 2; eyeLMesh.position.set(0.12, 0.1, 0.25);
+        const gLMesh = new THREE.Mesh(grillGeo, grillMat); gLMesh.rotation.z = Math.PI / 2; gLMesh.position.set(0.125, 0, 0); eyeLMesh.add(gLMesh);
+        const eyeRMesh = new THREE.Mesh(usEyeGeo, usEyeMat); eyeRMesh.rotation.z = Math.PI / 2; eyeRMesh.position.set(0.12, 0.1, -0.25);
+        const gRMesh = new THREE.Mesh(grillGeo, grillMat); gRMesh.rotation.z = Math.PI / 2; gRMesh.position.set(0.125, 0, 0); eyeRMesh.add(gRMesh);
+        usSensorGroup.add(eyeLMesh, eyeRMesh);
+
+        // Camera gooseneck
+        const cameraArmGroup = new THREE.Group(); robotCar.add(cameraArmGroup);
+        const gooseneckPoints = [new THREE.Vector3(1.7, 0.86, 0.6), new THREE.Vector3(1.6, 1.2, 0.65), new THREE.Vector3(1.5, 1.5, 0.7), new THREE.Vector3(1.6, 1.6, 0.7)];
+        const gooseneckGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(gooseneckPoints), 12, 0.06, 4, false); // Optimized divisions
+        const gooseneckArm = new THREE.Mesh(gooseneckGeo, new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
+        const gooseneckBase = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 12), portMetalMat); gooseneckBase.position.set(1.7, 0.88, 0.6);
+        cameraArmGroup.add(gooseneckArm, gooseneckBase);
+        const camPCB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.44, 0.44), new THREE.MeshStandardMaterial({ color: 0x0c4c1d })); camPCB.position.set(1.6, 1.6, 0.7); camPCB.rotation.y = Math.PI / 6;
+        const lensHousing = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.22, 0.22), new THREE.MeshStandardMaterial({ color: 0x151515 })); lensHousing.position.set(1.65, 1.6, 0.73); lensHousing.rotation.y = Math.PI / 6;
+        const lensGlass = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshPhysicalMaterial({ color: 0x051a88, roughness: 0.02, transmission: 0.2 })); lensGlass.position.set(1.7, 1.6, 0.76);
+        cameraArmGroup.add(camPCB, lensHousing, lensGlass);
+
+        // Power Bank
+        const powerBank = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.48, 1.2), new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.3, metalness: 0.7 })); powerBank.position.set(-0.6, 0.28, -0.25);
+        const powerCableGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-0.6, 0.28, -0.85), new THREE.Vector3(-0.92, 0.28, -0.88), new THREE.Vector3(-0.92, 0.76, -0.88), new THREE.Vector3(0.3, 0.93, -0.85)]), 12, 0.026, 4, false); // Optimized
+        const powerCable = new THREE.Mesh(powerCableGeo, new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85 }));
+        robotCar.add(powerBank, powerCable);
+
+        // Jumper wires
+        const jumperWiresGroup = new THREE.Group(); robotCar.add(jumperWiresGroup);
+        const jumperColors = [0xe53935, 0x43a047, 0x1e88e5, 0xffb300, 0x3949ab, 0x212121, 0xe53935, 0x43a047];
+        for(let i=0; i<8; i++) {
+            const startX = 0.5 + (i * 0.04); const startZ = -0.94;
+            let endX = (i < 4) ? 1.86 : -0.6 - (i * 0.03);
+            let endY = (i < 4) ? 0.68 : 1.02;
+            let endZ = (i < 4) ? -0.15 + (i * 0.1) : 0.2 + ((i-4)*0.08);
+            const midX = (startX + endX) / 2; const midY = 1.45; const midZ = (startZ + endZ) / 2;
+            const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(startX, 1.1, startZ), new THREE.Vector3(midX, midY, midZ), new THREE.Vector3(endX, endY, endZ)]);
+            const wireMesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.016, 4, false), new THREE.MeshStandardMaterial({ color: jumperColors[i], roughness: 0.28 })); // Optimized geometry
+            jumperWiresGroup.add(wireMesh);
+        }
+
+        // --- 3D MOUNTAINS (SHRINKED TO NOT BLOCK CAR VIEW, AS REQUESTED) ---
+        const mountainGroup = new THREE.Group();
+        scene.add(mountainGroup);
+        const mountainMat = new THREE.MeshStandardMaterial({ color: 0x423830, roughness: 0.9 });
+        const mountainOffsets = [
+            [-3.5, -3.0, -3.4, 1.3],  // x, y (initially down), z, scale (half of previous 2.5 to avoid occlusion)
+            [0.5, -3.0, -3.6, 1.4],
+            [-1.5, -3.0, 3.4, 1.3],
+            [2.5, -3.0, 3.6, 1.4]
+        ];
+        const mountains = [];
+        mountainOffsets.forEach(pos => {
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(0.8 * pos[3], 1.5, 5), mountainMat); // Half size of original
+            cone.position.set(pos[0], pos[1], pos[2]);
+            cone.castShadow = false; // Disable shadows on mountain to prevent lag!
+            mountainGroup.add(cone);
+            mountains.push(cone);
+        });
+
+        // --- LANDSLIDE BOULDER ROCK (SHRINKED AND READY FOR DODGE) ---
+        const boulderMat = new THREE.MeshStandardMaterial({ color: 0x3d3027, roughness: 0.95 });
+        const boulderMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 1), boulderMat); // Shrinked from 0.38
+        boulderMesh.position.set(3.0, -2.5, -3.0);
+        scene.add(boulderMesh);
+
+        // --- HAZARDS GROUP ---
+        const obstacleGroup = new THREE.Group();
+        obstacleGroup.position.set(5.5, -1.06, 0);
+        scene.add(obstacleGroup);
+
+        const potholeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.01, 16), new THREE.MeshStandardMaterial({ color: 0x05070a, roughness: 0.95 })); // Optimized segments
+        potholeMesh.receiveShadow = true;
+        obstacleGroup.add(potholeMesh);
+
+        const crackGroup = new THREE.Group();
+        obstacleGroup.add(crackGroup);
+        const crackLineMat = new THREE.MeshStandardMaterial({ color: 0x010204, roughness: 0.98 });
+        for(let i=0; i<4; i++) { // Optimized from 6 to 4 lines
+            const angle = (i * Math.PI) / 2;
+            const crackLine = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.005, 0.05 + Math.random()*0.1), crackLineMat);
+            crackLine.rotation.y = angle; crackGroup.add(crackLine);
+        }
+        crackGroup.visible = false;
+
+        const bumpGroup = new THREE.Group();
+        obstacleGroup.add(bumpGroup);
+        const bump = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 2.0, 12, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0xffd200, roughness: 0.6 })); // Optimized segments
+        bump.rotation.x = Math.PI / 2; bump.rotation.z = Math.PI / 2; bump.position.y = 0.09;
+        bumpGroup.add(bump);
+        bumpGroup.visible = false;
+
+        const damageGroup = new THREE.Group();
+        obstacleGroup.add(damageGroup);
+        const damageMat = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.9 });
+        for(let i=0; i<3; i++) { // Optimized count
+            const patch = new THREE.Mesh(new THREE.BoxGeometry(0.4 + Math.random()*0.4, 0.02, 0.4 + Math.random()*0.4), damageMat);
+            patch.position.set(Math.random()*0.4-0.2, 0.01, Math.random()*0.4-0.2);
+            damageGroup.add(patch);
+        }
+        damageGroup.visible = false;
+
+        const scanRing = new THREE.Mesh(new THREE.RingGeometry(0.74, 0.78, 16), new THREE.MeshBasicMaterial({ color: 0xff3333, side: THREE.DoubleSide, transparent: true, opacity: 0 })); // Optimized segments
+        scanRing.rotation.x = Math.PI / 2; scanRing.position.y = 0.015;
+        obstacleGroup.add(scanRing);
+
+        // Laser scan pointer
+        const laserMaterial = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0 });
+        const laserGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(1.7, 1.6, 0.76), new THREE.Vector3(5.5, -1.06, 0)]);
+        const laserLine = new THREE.Line(laserGeo, laserMaterial);
+        scene.add(laserLine);
+
+        // Tower laser scanning line
+        const towerLaserMaterial = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0 });
+        const towerLaserGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(3.1, 4.0, -1.7), new THREE.Vector3(5.5, -1.06, 0)]);
+        const towerLaserLine = new THREE.Line(towerLaserGeo, towerLaserMaterial);
+        scene.add(towerLaserLine);
+
+        // --- SIMULATION CONFIGURATION ---
+        const hazards = [
+            { type: 'POTHOLE', name: 'POTHOLE DETECTED!', subText: 'DEPTH: 35 CM (PALLAM/KUZHI)', color: '#ff3333', hex: 0xff3333, voiceEn: 'Warning! Pothole detected ahead. Initiating active steering dodge.', voiceTa: 'எச்சரிக்கை! முன்னால் பள்ளம் உள்ளது. வண்டி ஓரமாக ஒதுங்கிச் செல்கிறது.' },
+            { type: 'CRACKS', name: 'ROAD CRACK DETECTED!', subText: 'CRACKING SEVERITY: SEVERE', color: '#ffbb00', hex: 0xffbb00, voiceEn: 'Warning! Road cracks detected. Moving to safety shoulder.', voiceTa: 'எச்சரிக்கை! முன்னால் சாலை விரிசல் உள்ளது. வண்டி ஓரமாக ஒதுங்குகிறது.' },
+            { type: 'BUMP', name: 'SPEED BUMP DETECTED!', subText: 'HEIGHT: 15 CM (MEDU/HUMPS)', color: '#00aaff', hex: 0x00aaff, voiceEn: 'Warning! Speed bump detected. Adjusting lane to clear.', voiceTa: 'எச்சரிக்கை! முன்னால் வேகத்தடை மேடு உள்ளது. வண்டி வளைந்து செல்கிறது.' },
+            { type: 'DAMAGE', name: 'ROAD DAMAGE DETECTED!', subText: 'SURFACE TYPE: CRITICAL', color: '#ff5500', hex: 0xff5500, voiceEn: 'Warning! Severe road damage ahead. Executing lane shift.', voiceTa: 'எச்சரிக்கை! முன்னால் சாலை சேதமடைந்துள்ளது. பாதை மாறுகிறது.' }
+        ];
+        let currentHazardIndex = 0;
+
+        function setHazardMesh(index) {
+            potholeMesh.visible = (index === 0);
+            crackGroup.visible = (index === 1);
+            bumpGroup.visible = (index === 2);
+            damageGroup.visible = (index === 3);
+        }
+
+        // --- SIMULATION STATE ---
+        let isDriving = true;
+        let activeAlert = false;
+        let hasPlayedBeep = false;
+        let simulationPhase = 0; // 0: Normal driving, 1: Mountains rising, 2: Landslide rolling, 3: Dodging boulder, 4: Clearing
+        
+        let driveTime = 0;
+        let alertPulse = 0;
+        let blinkTime = 0;
+        let phaseTimer = 0;
+
+        // Dynamic Dodge Offset & Road Width
+        let roadScaleZ = 1.0;
+        let targetRoadScaleZ = 1.0;
+        let dodgeOffsetZ = 0.0;
+        let targetDodgeOffsetZ = 0.0; // Increased to 1.55 so wheels never clip! (AS REQUESTED)
+
+        // --- AUDIO BUZZER SYSTEM ---
+        function playAlertSound(freq = 1100, type = 'sawtooth') {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {
+                console.error("Audio Context Error:", e);
+            }
+        }
+
+        // --- BILINGUAL SPEECH SYNTHESIS FUNCTION (AS REQUESTED) ---
+        let lastSpeechTime = 0;
+        function triggerVoiceAlert(hazard) {
+            const now = Date.now();
+            if (now - lastSpeechTime < 10000) return; // 10-second throttle to repeat notifications as requested!
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Interrupt previous utterances immediately
+                const text = (voiceLanguage === 'en') ? hazard.voiceEn : hazard.voiceTa;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = (voiceLanguage === 'en') ? 'en-US' : 'ta-IN';
+                utterance.rate = 1.05;
+                utterance.pitch = 1.0;
+                utterance.volume = 0.95;
+                window.speechSynthesis.speak(utterance);
+                lastSpeechTime = now;
+            }
+        }
+
+        const hazardStatus = document.getElementById('hazard-status');
+        const roadStatus = document.getElementById('road-status');
+        const widthStatus = document.getElementById('width-status');
+        const simPhaseTxt = document.getElementById('sim-phase-txt');
+        const towerScanVal = document.getElementById('tower-scan-status');
+
+        // MULTI-STAGE DETECTION & ACTIVE DODGE SYSTEM (OPTIMIZED FOR ZERO-LAG & NO WHEEL CLIPPING)
+        function updateDetectionPipeline(obstacleX, obstacleZ) {
+            const currentHazard = (simulationPhase === 3 || simulationPhase === 2) ? 
+                { type: 'BOULDER', name: 'CRITICAL LANDSLIDE!', subText: 'ROCKFALL DETECTED ON ROAD', color: '#ff3333', hex: 0xff3333, voiceEn: 'Warning! Landslide boulder on road! Steering to side shoulder.', voiceTa: 'எச்சரிக்கை! முன்னால் நிலச்சரிவு கல் உள்ளது! வண்டி ஓரமாக ஒதுங்கிச் செல்கிறது.' } :
+                hazards[currentHazardIndex];
+
+            // 1. Long range: Active Tower Camera detects first (Uses closest scrolling tower)
+            // Identify which scrolling tower is closest to the oncoming hazard
+            const t1Dist = Math.abs(obstacleX - towerGroup1.position.x);
+            const t2Dist = Math.abs(obstacleX - towerGroup2.position.x);
+            const activeTower = (t1Dist < t2Dist) ? towerGroup1 : towerGroup2;
+            const distToTower = Math.abs(obstacleX - activeTower.position.x);
+
+            if (distToTower < 1.35) { // Tower scans when hazard is directly under it
+                towerScanVal.innerText = 'ALERT [SCANNING]';
+                towerScanVal.className = 'status-value status-alert';
+
+                // Display Tower Laser pointing from the current active tower camera to hazard
+                const towerCamPos = new THREE.Vector3(1.6, 3.9, 0.78);
+                activeTower.localToWorld(towerCamPos);
+                
+                const hazardPos = new THREE.Vector3();
+                if (simulationPhase >= 2) {
+                    boulderMesh.getWorldPosition(hazardPos);
+                } else {
+                    obstacleGroup.getWorldPosition(hazardPos);
+                }
+                
+                towerLaserLine.geometry.setFromPoints([towerCamPos, hazardPos]);
+                towerLaserMaterial.color.setHex(0xffaa00);
+                towerLaserMaterial.opacity = 0.85;
+
+                updateBillboard(true, 'TOWER ALERT: HAZARD AHEAD!', 'LONG-RANGE DETECT', '#ffaa00');
+                
+                // Voice Announcement triggers at long range!
+                triggerVoiceAlert(currentHazard);
+
+                if (!hasPlayedBeep) {
+                    playAlertSound(780, 'sine');
+                    hasPlayedBeep = true;
+                }
+            } else {
+                towerScanVal.innerText = 'Smart Poles Active';
+                towerScanVal.className = 'status-value status-active';
+                towerLaserMaterial.opacity = 0;
+            }
+
+            // 2. Short range: Car Camera & Ultrasonic sensor detects next
+            // Car front camera is situated at x = 1.7 (on top plate)
+            const distToCar = obstacleX - 1.7;
+            // Widen road and Steer Dodge completely clear of hazard so wheels never touch! (AS REQUESTED)
+            if (distToCar > -0.6 && distToCar < 1.7) {
+                roadStatus.innerText = 'DODGING HAZARD';
+                roadStatus.className = 'status-value status-alert';
+
+                // WIDEN ROAD (scale up Z mesh during dodge)
+                targetRoadScaleZ = 1.3; 
+                widthStatus.innerText = 'Expanded (8.0m+)';
+                widthStatus.style.color = '#00ffcc';
+
+                // Steer Dodge offset increased to 2.45m/2.55m on the doubled road to completely clear the center hazard!
+                if (simulationPhase >= 2) {
+                    targetDodgeOffsetZ = -2.55; // Steer completely to the left shoulder
+                    hazardStatus.innerText = 'Dodge Left (-2.5m)';
+                } else {
+                    targetDodgeOffsetZ = 2.45; // Steer completely to the right shoulder
+                    hazardStatus.innerText = 'Dodge Right (+2.4m)';
+                }
+                hazardStatus.style.color = '#ffaa00';
+
+                // Show Car Camera laser pointing to hazard
+                const camLensPos = new THREE.Vector3();
+                lensGlass.getWorldPosition(camLensPos);
+                
+                const hazardPos = new THREE.Vector3();
+                if (simulationPhase >= 2) {
+                    boulderMesh.getWorldPosition(hazardPos);
+                } else {
+                    obstacleGroup.getWorldPosition(hazardPos);
+                }
+
+                laserLine.geometry.setFromPoints([camLensPos, hazardPos]);
+                laserMaterial.color.setHex(currentHazard.hex);
+                laserMaterial.opacity = 0.85;
+                laserSpotLight.color.setHex(currentHazard.hex);
+                laserSpotLight.intensity = 4.0;
+                scanRing.material.color.setHex(currentHazard.hex);
+                scanRing.material.opacity = 0.9;
+
+                updateBillboard(true, currentHazard.name, currentHazard.subText, currentHazard.color);
+
+                // Sound local buzzer alert
+                if (hasPlayedBeep && towerLaserMaterial.opacity === 0) {
+                    hasPlayedBeep = false;
+                }
+                if (!hasPlayedBeep || distToCar < 0.6) {
+                    playAlertSound(currentHazard.type === 'BUMP' ? 880 : 1200, 'sawtooth');
+                    hasPlayedBeep = true;
+                }
+            } else {
+                // RESET ROAD WIDTH & STEER BACK TO CENTER
+                targetRoadScaleZ = 1.0;
+                targetDodgeOffsetZ = 0.0;
+                
+                widthStatus.innerText = 'Normal (8.0m)';
+                widthStatus.style.color = '#fff';
+                hazardStatus.innerText = 'Center Lane';
+                hazardStatus.style.color = '#00ffcc';
+                roadStatus.innerText = 'DRIVING';
+                roadStatus.className = 'status-value status-active';
+                
+                laserMaterial.opacity = 0;
+                laserSpotLight.intensity = 0;
+                scanRing.material.opacity = 0;
+
+                if (towerLaserMaterial.opacity === 0) {
+                    updateBillboard(false, 'SYSTEM RUNNING', 'CLEAR');
+                    hasPlayedBeep = false;
+                }
+            }
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Orbit controls
+            controls.update();
+
+            // Blinking red camera status LED on tower
+            blinkTime += 0.08;
+            towerBlinkLED.intensity = (Math.sin(blinkTime * 2) > 0.5) ? 1.5 : 0;
+
+            // Interpolate Road Width expansion and Steering Dodge offset smoothly
+            roadScaleZ += (targetRoadScaleZ - roadScaleZ) * 0.07;
+            roadMesh.scale.z = roadScaleZ;
+
+            dodgeOffsetZ += (targetDodgeOffsetZ - dodgeOffsetZ) * 0.08;
+
+            // Drive simulation
+            if (isDriving) {
+                driveTime += 0.035;
+
+                // Rotates wheels (Never stops because car dodges and never halts! AS REQUESTED)
+                wheels.forEach(w => {
+                    w.children[0].rotation.y += 0.25;
+                    w.children[1].rotation.y += 0.25;
+                });
+
+                // Suspension vibrations
+                robotCar.position.y = -0.65 + Math.sin(driveTime * 7) * 0.02;
+
+                // Keep car aligned on the center line, adding only the active steer dodge offset!
+                robotCar.position.z = dodgeOffsetZ;
+                
+                // Steering rotation is purely based on the dodging lateral movement!
+                const dodgeSteer = (targetDodgeOffsetZ - dodgeOffsetZ) * 0.45;
+                robotCar.rotation.y = dodgeSteer;
+
+                // Move road marking stripes
+                stripes.forEach(s => {
+                    s.position.x -= 0.06;
+                    if (s.position.x < -8.0) s.position.x = 8.0;
+                    s.position.z = Math.sin(s.position.x * 0.35) * 1.0;
+                    const tangent = roadCurve.getTangentAt((s.position.x + 12) / 24);
+                    s.rotation.y = Math.atan2(-tangent.z, tangent.x);
+                });
+
+                // Scroll asphalt road texture infinitely
+                roadText.offset.x -= 0.015;
+
+                // --- SCROLL TWO TOWERS INFINITELY (STATIONARY/FIXED TO ROAD SCROLL, AS REQUESTED) ---
+                towerGroup1.position.x -= 0.06;
+                towerGroup1.position.z = -3.2;
+                if (towerGroup1.position.x < -8.0) towerGroup1.position.x = 8.0;
+
+                towerGroup2.position.x -= 0.06;
+                towerGroup2.position.z = -3.2;
+                if (towerGroup2.position.x < -8.0) towerGroup2.position.x = 8.0;
+
+                // Scroll two billboards
+                billboardGroup1.position.x -= 0.06;
+                billboardGroup1.position.z = -3.0;
+                if (billboardGroup1.position.x < -8.0) billboardGroup1.position.x = 8.0;
+
+                billboardGroup2.position.x -= 0.06;
+                billboardGroup2.position.z = -3.0;
+                if (billboardGroup2.position.x < -8.0) billboardGroup2.position.x = 8.0;
+
+                // --- PHASE 0: NORMAL HIGHWAY DRIVING (CYCLING HAZARDS WITH ACTIVE DODGING) ---
+                if (simulationPhase === 0) {
+                    simPhaseTxt.innerText = 'Normal Driving';
+                    
+                    // Move road hazard towards the car along the road curve
+                    obstacleGroup.position.x -= 0.06;
+                    if (obstacleGroup.position.x < -6.5) {
+                        obstacleGroup.position.x = 7.5;
+                        hasPlayedBeep = false;
+                        
+                        // Increment hazard type
+                        currentHazardIndex = (currentHazardIndex + 1) % hazards.length;
+                        setHazardMesh(currentHazardIndex);
+
+                        // Trigger landslide mountain zone after all hazards cycle once
+                        if (currentHazardIndex === 0) {
+                            simulationPhase = 1;
+                            phaseTimer = 0;
+                        }
+                    }
+                    obstacleGroup.position.z = Math.sin(obstacleGroup.position.x * 0.35) * 1.0;
+
+                    // Active detection & dodge steering pipeline
+                    updateDetectionPipeline(obstacleGroup.position.x, obstacleGroup.position.z);
+                }
+
+                // --- PHASE 1: ENTERING MOUNTAIN PASS (SMALLER MOUNTAINS RISE SLOWLY, AS REQUESTED) ---
+                else if (simulationPhase === 1) {
+                    simPhaseTxt.innerText = 'Entering Mountains';
+                    updateBillboard(false, 'SYSTEM RUNNING', 'CLEAR');
+                    
+                    // Slide smaller mountains up from under the desk
+                    mountains.forEach(m => {
+                        const targetY = -1.09 + 0.15; // Low Y target so they don't block car view
+                        if (m.position.y < targetY) m.position.y += 0.08;
+                    });
+
+                    // Clear old hazards
+                    obstacleGroup.position.x -= 0.06;
+
+                    phaseTimer += 0.035;
+                    if (phaseTimer > 3.0) {
+                        simulationPhase = 2; // Boulder starts rolling
+                        phaseTimer = 0;
+                        boulderMesh.position.set(3.0, 1.2, -2.2); // Spawn on left mountain slope
+                    }
+                }
+
+                // --- PHASE 2: LANDSLIDE IN PROGRESS (ROCK ROLLS DOWN TO ROAD) ---
+                else if (simulationPhase === 2) {
+                    simPhaseTxt.innerText = 'Landslide Alert!';
+                    updateBillboard(true, 'CAUTION: LANDSLIDE ZONE', 'ROCKFALL WARNING!', '#ff5500');
+                    
+                    // Boulder rolls down from left mountain (z = -2.2) to center road Z
+                    const targetZ = Math.sin(3.0 * 0.35) * 1.0;
+                    boulderMesh.position.y -= 0.08; // roll down
+                    boulderMesh.position.z += (targetZ - boulderMesh.position.z) * 0.08;
+                    boulderMesh.rotation.z += 0.25;
+
+                    // Boulder reaches road surface
+                    if (boulderMesh.position.y <= -0.9) {
+                        boulderMesh.position.y = -0.92;
+                        simulationPhase = 3; // ACTIVE DODGE PHASE (DO NOT STOP VEHICLE! AS REQUESTED)
+                        phaseTimer = 0;
+                        hasPlayedBeep = false;
+                    }
+                }
+
+                // --- PHASE 3: ACTIVE LANDSLIDE BOULDER DODGE (DODGES INSTEAD OF STOPPING, AS REQUESTED) ---
+                else if (simulationPhase === 3) {
+                    simPhaseTxt.innerText = 'Dodging Landslide';
+                    
+                    // Move the boulder towards the car along the winding road curve
+                    boulderMesh.position.x -= 0.06;
+                    boulderMesh.position.z = Math.sin(boulderMesh.position.x * 0.35) * 1.0;
+
+                    // Scan and active dodge steering around the boulder (without stopping!)
+                    updateDetectionPipeline(boulderMesh.position.x, boulderMesh.position.z);
+
+                    // Once the boulder passes behind the car, transition to clearing phase
+                    if (boulderMesh.position.x < -0.8) {
+                        simulationPhase = 4;
+                        phaseTimer = 0;
+                    }
+                }
+
+                // --- PHASE 4: HAZARD CLEARED & RESUMING LOOP ---
+                else if (simulationPhase === 4) {
+                    simPhaseTxt.innerText = 'Resuming Drive';
+                    
+                    // Roll boulder off the screen
+                    boulderMesh.position.x -= 0.15;
+                    boulderMesh.position.y -= 0.1;
+                    
+                    // Slide mountains back down under desk
+                    mountains.forEach(m => {
+                        if (m.position.y > -3.0) m.position.y -= 0.1;
+                    });
+
+                    phaseTimer += 0.035;
+                    if (phaseTimer > 3.0) {
+                        simulationPhase = 0; // Return to normal loop
+                        phaseTimer = 0;
+                        obstacleGroup.position.x = 7.5;
+                        hasPlayedBeep = false;
+                        setHazardMesh(0);
+                    }
+                }
+            } else {
+                // If not driving
+                robotCar.position.z = 0;
+                robotCar.rotation.y = 0;
+                laserMaterial.opacity = 0;
+                towerLaserMaterial.opacity = 0;
+                laserSpotLight.intensity = 0;
+                scanRing.material.opacity = 0;
+                targetRoadScaleZ = 1.0;
+                targetDodgeOffsetZ = 0.0;
+            }
+
+            // Billboards rotation to face camera slightly
+            billboardGroup1.rotation.y = Math.PI / 6;
+            billboardGroup2.rotation.y = Math.PI / 6;
+
+            // Pulse effects on alert
+            if (activeAlert || (simulationPhase >= 2 && simulationPhase <= 3)) {
+                alertPulse += 0.15;
+                const scale = 1.0 + Math.sin(alertPulse) * 0.12;
+                scanRing.scale.set(scale, scale, scale);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Adjust dimensions on resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        animate();
+    </script>
+</body>
+</html>

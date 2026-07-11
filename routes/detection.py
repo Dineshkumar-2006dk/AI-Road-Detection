@@ -481,3 +481,10 @@ def api_detect_frame():
         "saved_to_db":     saved_to_db,
         "email":           email_status,
     })
+
+
+# ── Real-Time Evaluation Page ──────────────────────────────────────────────────
+@detection_bp.route("/realtime-evaluation")
+@login_required
+def realtime_evaluation():
+    return render_template("detection/realtime_evaluation.html")

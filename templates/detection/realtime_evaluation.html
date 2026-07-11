@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Real-Time Evaluation{% endblock %}
+{% block page_title %}<i class="fas fa-cubes me-2"></i>Real-Time Evaluation{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="rg-card" style="overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); background: #0c101b;">
+      <div class="rg-card-header d-flex justify-content-between align-items-center" style="padding: 15px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <span><i class="fas fa-desktop me-2" style="color:#00ffcc;"></i>3D Active Steer Dodge Simulator</span>
+        <span class="badge" style="font-size: 0.78rem; background: rgba(0, 255, 204, 0.1); color: #00ffcc; padding: 5px 12px; border-radius: 20px; font-weight: 600; border: 1px solid rgba(0, 255, 204, 0.2);">ACTIVE SIMULATION</span>
+      </div>
+      <div class="rg-card-body p-0">
+        <iframe src="{{ url_for('static', filename='simulation/index.html') }}" style="width: 100%; height: 75vh; border: none; display: block;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
