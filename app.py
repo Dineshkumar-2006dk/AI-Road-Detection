@@ -215,10 +215,11 @@ if __name__ == "__main__":
             while True:
                 time.sleep(1)
     else:
-        # Running in development mode
+        # Running in development mode (read port from env for Render deployment)
+        port = int(os.environ.get("PORT", 5050))
         application.run(
             host="0.0.0.0",
-            port=5050,
+            port=port,
             debug=True,
             use_reloader=False,  # Prevent double model load on Windows
         )
