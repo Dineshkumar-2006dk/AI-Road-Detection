@@ -32,7 +32,7 @@ class Config:
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     DATABASE_PATH = os.path.join(BASE_DIR, "database", "roadguard.db")
-    SQLALCHEMY_DATABASE_URI = db_url or f"sqlite:///{DATABASE_PATH}"
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATABASE_PATH}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ──────────────────────────────────────────────────────────
