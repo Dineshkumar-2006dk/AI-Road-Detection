@@ -67,10 +67,26 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(settings_bp)
 
-    # ── Root route ───────────────────────────────────────────────────────────
+    # ── Root route & Convenience Redirects ──────────────────────────────────
     @app.route("/")
     def index():
         return render_template("index.html")
+
+    @app.route("/login")
+    def redirect_login():
+        return redirect(url_for("auth.login"))
+
+    @app.route("/register")
+    def redirect_register():
+        return redirect(url_for("auth.register"))
+
+    @app.route("/detect")
+    def redirect_detect():
+        return redirect(url_for("detection.image_detection"))
+
+    @app.route("/camera")
+    def redirect_camera():
+        return redirect(url_for("detection.camera_detection"))
 
     # ── No-cache headers for protected pages (fixes back-button bypass) ──────
     @app.after_request

@@ -97,24 +97,24 @@
           </div>
           <label class="form-label-sm">Notification Recipient Email</label>
           <input type="email" id="notifEmail" class="form-input-sm" placeholder="alerts@example.com"
-                 value="{{ settings.notification_email or '' }}">
+                 value="{{ settings.notification_email or config.get('NOTIFICATION_EMAIL', '') }}">
           <div class="row g-2 mt-2">
             <div class="col-6">
               <label class="form-label-sm">Sender Name</label>
               <input type="text" id="smtpServer" class="form-input-sm" placeholder="RoadGuard AI"
-                     value="{{ settings.smtp_server or 'RoadGuard AI' }}">
+                     value="{{ settings.smtp_server or config.get('BREVO_SENDER_NAME', 'RoadGuard AI') }}">
             </div>
             <div class="col-6">
               <label class="form-label-sm">Sender Email</label>
               <input type="email" id="smtpUsername" class="form-input-sm" placeholder="your-verified-email@domain.com"
-                     value="{{ settings.smtp_username or '' }}">
+                     value="{{ settings.smtp_username or config.get('BREVO_SENDER_EMAIL', '') }}">
             </div>
           </div>
           <div class="row g-2 mt-2">
             <div class="col-12">
               <label class="form-label-sm">Brevo API Key</label>
               <input type="password" id="smtpPassword" class="form-input-sm" placeholder="Brevo API Key (xkeysib-...)"
-                     value="{{ settings.smtp_password or '' }}">
+                     value="{{ settings.smtp_password or config.get('BREVO_API_KEY', '') }}">
               <div class="setting-desc" style="font-size: 11px; margin-top: 4px;">Outbound SMTP ports are blocked on Render Free tier, so email notifications are sent via Brevo HTTP API (Port 443).</div>
             </div>
             <input type="hidden" id="smtpPort" value="587">

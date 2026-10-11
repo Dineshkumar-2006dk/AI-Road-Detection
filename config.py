@@ -62,13 +62,19 @@ class Config:
     SIMULATION_MODE = False
 
     # ──────────────────────────────────────────────────────────
-    #  SMTP Email  (fill in your credentials)
     # ──────────────────────────────────────────────────────────
-    SMTP_SERVER   = os.environ.get("SMTP_SERVER",   "smtp.gmail.com")
+    #  Email / Brevo HTTP API (Port 443 HTTPS on Render)
+    # ──────────────────────────────────────────────────────────
+    BREVO_API_KEY      = os.environ.get("BREVO_API_KEY",      os.environ.get("SMTP_PASSWORD", ""))
+    BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL", os.environ.get("SMTP_USERNAME", ""))
+    BREVO_SENDER_NAME  = os.environ.get("BREVO_SENDER_NAME",  os.environ.get("SMTP_SERVER", "RoadGuard AI"))
+    NOTIFICATION_EMAIL = os.environ.get("NOTIFICATION_EMAIL", "")
+
+    SMTP_SERVER   = BREVO_SENDER_NAME or os.environ.get("SMTP_SERVER", "RoadGuard AI")
     SMTP_PORT     = int(os.environ.get("SMTP_PORT", 587))
-    SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "your_email@gmail.com")
-    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "your_app_password_here")
-    SMTP_FROM     = os.environ.get("SMTP_FROM",     "RoadGuard AI <your_email@gmail.com>")
+    SMTP_USERNAME = BREVO_SENDER_EMAIL or os.environ.get("SMTP_USERNAME", "")
+    SMTP_PASSWORD = BREVO_API_KEY or os.environ.get("SMTP_PASSWORD", "")
+    SMTP_FROM     = os.environ.get("SMTP_FROM", f"RoadGuard AI <{SMTP_USERNAME}>" if SMTP_USERNAME else "RoadGuard AI")
 
     # ──────────────────────────────────────────────────────────
     #  Maps / Geo

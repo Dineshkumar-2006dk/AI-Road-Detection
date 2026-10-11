@@ -32,30 +32,27 @@ def send_detection_report(
     """
     cfg = current_app.config
 
-    smtp_server   = cfg.get("SMTP_SERVER")
-    smtp_user     = cfg.get("SMTP_USERNAME")
-    smtp_password = cfg.get("SMTP_PASSWORD")
+    brevo_api_key = cfg.get("BREVO_API_KEY") or cfg.get("SMTP_PASSWORD") or ""
+    sender_email  = cfg.get("BREVO_SENDER_EMAIL") or cfg.get("SMTP_USERNAME") or ""
+    sender_name   = cfg.get("BREVO_SENDER_NAME") or cfg.get("SMTP_SERVER") or "RoadGuard AI"
 
     if user_settings:
         def get_val(obj, attr, default=None):
             if isinstance(obj, dict):
-                return obj.get(attr) or default
-            return getattr(obj, attr, None) or default
+                v = obj.get(attr)
+            else:
+                v = getattr(obj, attr, None)
+            return v if (v is not None and str(v).strip() != "") else default
 
-        smtp_server   = get_val(user_settings, "smtp_server", smtp_server)
-        smtp_user     = get_val(user_settings, "smtp_username", smtp_user)
-        smtp_password = get_val(user_settings, "smtp_password", smtp_password)
-
-    # Repurpose SMTP variables to Brevo
-    brevo_api_key = smtp_password
-    sender_email  = smtp_user
-    sender_name   = smtp_server or "RoadGuard AI"
+        sender_name   = get_val(user_settings, "smtp_server", sender_name)
+        sender_email  = get_val(user_settings, "smtp_username", sender_email)
+        brevo_api_key = get_val(user_settings, "smtp_password", brevo_api_key)
 
     # Validate Brevo config
     if not brevo_api_key or brevo_api_key in ("your_app_password_here", "") or not sender_email or sender_email in ("your_email@gmail.com", ""):
         return {
             "success": False,
-            "message": "Brevo HTTP API not configured. Please set your Brevo API Key and Sender Email in the Settings page."
+            "message": "Brevo HTTP API not configured. Please set your Brevo API Key and Sender Email in the Settings page or Render environment variables."
         }
 
     now       = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
