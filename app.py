@@ -88,6 +88,12 @@ def create_app(config_class=Config):
     def redirect_camera():
         return redirect(url_for("detection.camera_detection"))
 
+    # ── Health check endpoint (used by Render + keep-alive pinger) ───────────
+    @app.route("/healthz")
+    def healthz():
+        from flask import jsonify
+        return jsonify({"status": "ok", "service": "RoadGuard AI"}), 200
+
     # ── No-cache headers for protected pages (fixes back-button bypass) ──────
     @app.after_request
     def add_no_cache_headers(response):
@@ -160,8 +166,47 @@ def _seed_admin(app):
         print(f"[RoadGuard] Admin seeded: {app.config['ADMIN_EMAIL']}")
 
 
+def _start_keep_alive(app):
+    """
+    Background thread that pings /healthz every 13 minutes.
+    This prevents Render Free Tier from putting the container to sleep
+    after 15 minutes of inactivity (Cold Start problem).
+    Only runs when deployed on Render (RENDER env variable is set).
+    """
+    import threading
+    import time
+    import requests as req_lib
+
+    def _ping():
+        # Wait 60s for gunicorn to fully boot before first ping
+        time.sleep(60)
+        base_url = os.environ.get("RENDER_EXTERNAL_URL", "")
+        if not base_url:
+            # Construct from Render's service name env var if available
+            svc = os.environ.get("RENDER_SERVICE_NAME", "")
+            if svc:
+                base_url = f"https://{svc}.onrender.com"
+        if not base_url:
+            return  # Not on Render, skip
+        url = base_url.rstrip("/") + "/healthz"
+        while True:
+            try:
+                r = req_lib.get(url, timeout=10)
+                app.logger.info(f"[KeepAlive] Pinged {url} -> {r.status_code}")
+            except Exception as e:
+                app.logger.warning(f"[KeepAlive] Ping failed: {e}")
+            time.sleep(13 * 60)  # Every 13 minutes
+
+    # Only start on Render (RENDER env variable is always set there)
+    if os.environ.get("RENDER"):
+        t = threading.Thread(target=_ping, daemon=True, name="keep-alive")
+        t.start()
+        app.logger.info("[KeepAlive] Self-ping thread started (every 13 min)")
+
+
 # ── Application instance ─────────────────────────────────────────────────────
 application = create_app()
+_start_keep_alive(application)
 
 if __name__ == "__main__":
     import sys
