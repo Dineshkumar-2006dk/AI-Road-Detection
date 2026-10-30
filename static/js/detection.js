@@ -18,6 +18,44 @@ const detectBtn      = document.getElementById('detectBtn');
 dropZone.addEventListener('click', () => imageInput.click());
 imageInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
+// ── Auto-detect GPS on page load ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Auto-fill notification email from settings if auto-send is ON
+  const emailInput = document.getElementById('emailInput');
+  if (emailInput && !emailInput.value) {
+    const autoEmail = (typeof window.notificationEmail !== 'undefined' && window.notificationEmail)
+                    ? window.notificationEmail : '';
+    if (autoEmail) emailInput.value = autoEmail;
+  }
+  // Auto-detect GPS silently on page load
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById('latInput').value = pos.coords.latitude.toFixed(6);
+        document.getElementById('lonInput').value = pos.coords.longitude.toFixed(6);
+        const status = document.getElementById('locationStatus');
+        if (status) status.innerHTML = `<span style="color:#66bb6a;"><i class="fas fa-check me-1"></i>
+          Current location auto-detected (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})</span>`;
+      },
+      async () => {
+        // GPS denied → silent IP-based fallback
+        try {
+          const res = await fetch('https://ipapi.co/json/');
+          const ipData = await res.json();
+          if (ipData.latitude && ipData.longitude) {
+            document.getElementById('latInput').value  = ipData.latitude.toFixed(6);
+            document.getElementById('lonInput').value  = ipData.longitude.toFixed(6);
+            const status = document.getElementById('locationStatus');
+            if (status) status.innerHTML = `<span style="color:#ffa726;"><i class="fas fa-map-pin me-1"></i>
+              Approximate location: ${ipData.city || ''} (${ipData.latitude.toFixed(4)}, ${ipData.longitude.toFixed(4)})</span>`;
+          }
+        } catch (_) { /* silent — user can click Auto Detect or type manually */ }
+      },
+      { timeout: 8000, enableHighAccuracy: false, maximumAge: 60000 }
+    );
+  }
+});
+
 dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
@@ -201,8 +239,8 @@ async function runDetection() {
     // Email toast
     if (data.email) {
       if (data.email.sent)
-        showToast('Email report sent successfully!', 'success');
-      else if (data.email.message && !data.email.message.includes('not configured'))
+        showToast(`✅ Email report sent to ${data.email.recipient || 'recipient'}!`, 'success', 5000);
+      else if (data.email.message && !data.email.message.includes('No email recipient'))
         showToast('Email: ' + data.email.message, 'warning');
     }
 

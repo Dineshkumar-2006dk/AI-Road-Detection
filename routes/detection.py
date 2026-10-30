@@ -221,7 +221,21 @@ def _trigger_sms_alert(result, settings, lat, lon, location_name):
 @detection_bp.route("/image")
 @login_required
 def image_detection():
-    return render_template("detection/image_detection.html")
+    from flask import current_app
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    notification_email = ""
+    email_alerts_on = False
+    if settings:
+        notification_email = settings.notification_email or ""
+        email_alerts_on = bool(settings.email_alerts)
+    # Fallback to env/config if settings not configured
+    if not notification_email:
+        notification_email = current_app.config.get("NOTIFICATION_EMAIL", "")
+    return render_template(
+        "detection/image_detection.html",
+        notification_email=notification_email,
+        email_alerts_on=email_alerts_on,
+    )
 
 
 # ── Image Inference API ───────────────────────────────────────────────────────
@@ -281,12 +295,19 @@ def api_detect_image():
         current_app.logger.info("[Voice] Voice played")
         print("[Voice] Voice played")
 
-    # Send email and SMS/WhatsApp alert synchronously for image uploads
+    # ── Email: use form email if typed, else fall back to settings notification_email ──
     recipient = sanitize_email(request.form.get("email", ""))
+    # If no email was typed in form, try settings notification_email (auto-send)
+    if not recipient and settings and settings.notification_email:
+        recipient = sanitize_email(settings.notification_email)
+        current_app.logger.info(
+            "[Email] No email in form – using settings notification_email: %s", recipient
+        )
     notif_res = trigger_notifications(det, result, settings, lat, lon, location_name, maps_link_val, recipient_email=recipient, source="image", sync=True)
     email_status = {
-        "sent": notif_res["email_sent"],
-        "message": notif_res["email_error"] or ("Email sent successfully" if notif_res["email_sent"] else "Email sending failed")
+        "sent":      notif_res["email_sent"],
+        "recipient": recipient or "",
+        "message":   notif_res["email_error"] or ("Email sent to " + recipient if notif_res["email_sent"] else "No email recipient configured"),
     }
 
     log_activity("image_detection", f"Condition: {result['road_condition']}, Severity: {result['severity']}")

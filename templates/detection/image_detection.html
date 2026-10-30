@@ -68,9 +68,25 @@
         <div class="option-section mt-3">
           <div class="option-header">
             <i class="fas fa-envelope" style="color:#42a5f5;"></i>
-            Email Report (Optional)
+            Email Report
+            {% if email_alerts_on %}
+            <span style="background:#1b5e20;color:#a5d6a7;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;">
+              <i class="fas fa-bolt me-1"></i>Auto-send ON
+            </span>
+            {% endif %}
           </div>
-          <input type="email" id="emailInput" class="form-input-sm mt-1" placeholder="recipient@example.com">
+          <input type="email" id="emailInput" class="form-input-sm mt-1"
+                 placeholder="recipient@example.com"
+                 value="{{ notification_email }}">
+          {% if email_alerts_on and notification_email %}
+          <div style="color:#66bb6a;font-size:12px;margin-top:4px;">
+            <i class="fas fa-check me-1"></i>Auto email enabled → <strong>{{ notification_email }}</strong>
+          </div>
+          {% elif not notification_email %}
+          <div style="color:#78909c;font-size:12px;margin-top:4px;">
+            <i class="fas fa-info-circle me-1"></i>Or enter email to receive report
+          </div>
+          {% endif %}
         </div>
 
         <!-- Detect Button -->
@@ -225,5 +241,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+  // Injected by server – used by detection.js for auto-fill
+  window.notificationEmail = {{ notification_email | tojson }};
+  window.emailAlertsOn     = {{ 'true' if email_alerts_on else 'false' }};
+</script>
 <script src="{{ url_for('static', filename='js/detection.js') }}"></script>
 {% endblock %}
