@@ -206,6 +206,10 @@ async function sendFrame(blob, forceSave = false) {
         if (lat !== null) payload.latitude  = lat;
         if (lon !== null) payload.longitude = lon;
         if (forceSave)     payload.force_save = true;
+        // Always include notification email so server can auto-send
+        const notifEmail = (typeof window.notificationEmail !== 'undefined' && window.notificationEmail)
+                          ? window.notificationEmail : '';
+        if (notifEmail) payload.email = notifEmail;
 
         const res = await fetch('/detect/api/frame', {
           method:  'POST',
@@ -217,7 +221,13 @@ async function sendFrame(blob, forceSave = false) {
         if (data.success) {
           renderLiveResult(data);
           if (data.saved_to_db) {
-            showToast(forceSave ? 'Photo captured and saved to history!' : 'Road damage detected! Saved to history.', 'success', 3000);
+            const emailMsg = data.email && data.email.sent
+              ? ` | 📧 Email sent to ${data.email.recipient || notifEmail}`
+              : '';
+            showToast(
+              (forceSave ? 'Photo captured and saved!' : 'Road damage detected! Saved.') + emailMsg,
+              'success', 4000
+            );
           } else if (forceSave) {
             showToast('Photo captured!', 'info', 2000);
           }

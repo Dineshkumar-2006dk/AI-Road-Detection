@@ -31,10 +31,14 @@ _LAST_ALERT_TIMES = {}
 
 def _send_notifications_async_thread(app, detection_id, recipient_email, detection_data, result_image_path, settings_dict, lat, lon, location_name, maps_link_val):
     """Background thread worker to send email notifications and update DB status."""
+    import time as _time
+    # Small delay to let the main thread finish its DB commit first
+    _time.sleep(1.5)
     try:
         with app.app_context():
             # 1. Email Notification
             email_success = False
+            email_msg = ""
             if recipient_email:
                 email_result = send_detection_report(recipient_email, {
                     **detection_data,
@@ -44,88 +48,90 @@ def _send_notifications_async_thread(app, detection_id, recipient_email, detecti
                     "maps_link":     maps_link_val,
                 }, result_image_path, user_settings=settings_dict)
                 email_success = email_result["success"]
+                email_msg     = email_result.get("message", "")
+                app.logger.info(f"[Email] sent={email_success} to={recipient_email} msg={email_msg}")
+            else:
+                app.logger.warning("[Email] No recipient – skipping email")
 
-            # 2. Update DB status
+            # 2. Update DB status reliably with a fresh session
             from models.detection import Detection
             from extensions import db
-            det = db.session.get(Detection, detection_id)
-            if det:
-                det.email_sent = email_success
-                det.email_recipient = recipient_email if recipient_email else None
-                db.session.commit()
-                app.logger.info(f"[Background Alert] Completed. email_sent={email_success}")
+            # Retry up to 3 times in case of SQLite lock
+            for attempt in range(3):
+                try:
+                    det = db.session.get(Detection, detection_id)
+                    if det:
+                        det.email_sent      = email_success
+                        det.email_recipient = recipient_email or None
+                        db.session.commit()
+                        app.logger.info(
+                            f"[Background Alert] DB updated. detection_id={detection_id} "
+                            f"email_sent={email_success}"
+                        )
+                    break
+                except Exception as db_exc:
+                    db.session.rollback()
+                    app.logger.warning(
+                        f"[Background Alert] DB commit attempt {attempt+1} failed: {db_exc}"
+                    )
+                    _time.sleep(0.5 * (attempt + 1))
     except Exception as e:
-        app.logger.exception(f"[Background Alert] Thread encountered unexpected error: {e}")
+        app.logger.exception(f"[Background Alert] Thread error: {e}")
 
 
 def trigger_notifications(detection, result, settings, lat, lon, location_name, maps_link_val, recipient_email=None, source="image", sync=False):
-    # Resolve recipient email if not provided but alerts are enabled
+    """Send email notification for every detection — no throttling, no skipping."""
+    # Resolve recipient email: form email first, then settings notification_email
     if not recipient_email and settings:
-        if settings.email_alerts and settings.notification_email:
+        if settings.notification_email:
             recipient_email = sanitize_email(settings.notification_email)
 
     settings_dict = settings.to_dict() if settings else None
 
-    # Apply throttling for live camera frames
-    should_send = True
-    if source == "camera" and settings:
-        user_id = settings.user_id
-        now = time.time()
-        last_sent = _LAST_ALERT_TIMES.get(user_id, 0)
-        if (now - last_sent) < 120:  # 2 minute throttle
-            should_send = False
-        else:
-            _LAST_ALERT_TIMES[user_id] = now
-
-    if not should_send:
-        return {"email_sent": False, "email_error": "Throttled"}
-
     if not recipient_email:
-        return {"email_sent": False, "email_error": "No email recipient specified"}
+        current_app.logger.warning("[Email] No recipient email configured. Skipping email.")
+        return {"email_sent": False, "email_error": "No email recipient configured"}
 
     app = current_app._get_current_object()
     result_image_path = result.get("result_image_path")
 
-    if sync:
-        # Run synchronously for Image Upload
-        email_success = False
-        email_error = None
-        try:
-            email_result = send_detection_report(recipient_email, {
-                **result,
-                "latitude":      lat,
-                "longitude":     lon,
-                "location_name": location_name,
-                "maps_link":     maps_link_val,
-            }, result_image_path, user_settings=settings_dict)
-            email_success = email_result["success"]
-            email_error = email_result.get("message")
-        except Exception as e:
-            email_error = str(e)
-
-        # Update DB status immediately
-        from extensions import db
-        detection.email_sent = email_success
-        detection.email_recipient = recipient_email if recipient_email else None
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-        return {
-            "email_sent": email_success,
-            "email_error": email_error
-        }
-    else:
-        # Run asynchronously in background thread for camera
-        t = threading.Thread(
-            target=_send_notifications_async_thread,
-            args=(app, detection.id, recipient_email, result, result_image_path, settings_dict, lat, lon, location_name, maps_link_val)
+    # ── Always send synchronously (both image & camera) for reliable DB update ──
+    email_success = False
+    email_error   = None
+    try:
+        email_result = send_detection_report(recipient_email, {
+            **result,
+            "latitude":      lat,
+            "longitude":     lon,
+            "location_name": location_name,
+            "maps_link":     maps_link_val,
+        }, result_image_path, user_settings=settings_dict)
+        email_success = email_result["success"]
+        email_error   = email_result.get("message", "")
+        current_app.logger.info(
+            "[Email] sent=%s to=%s source=%s msg=%s",
+            email_success, recipient_email, source, email_error
         )
-        t.daemon = True
-        t.start()
-        app.logger.info(f"[Background Alert] Thread started for detection_id={detection.id}")
-        return {"email_sent": True, "email_error": "Alert processing asynchronously"}
+    except Exception as e:
+        email_error = str(e)
+        current_app.logger.exception("[Email] Exception during send_detection_report")
+
+    # Update DB reliably — retry on SQLite lock
+    from extensions import db as _db
+    detection.email_sent      = email_success
+    detection.email_recipient = recipient_email or None
+    for attempt in range(3):
+        try:
+            _db.session.commit()
+            break
+        except Exception as db_exc:
+            _db.session.rollback()
+            current_app.logger.warning(
+                "[Email] DB commit attempt %d failed: %s", attempt + 1, db_exc
+            )
+            time.sleep(0.3 * (attempt + 1))
+
+    return {"email_sent": email_success, "email_error": email_error}
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
@@ -428,7 +434,15 @@ def serve_upload(filename):
 @detection_bp.route("/camera")
 @login_required
 def camera_detection():
-    return render_template("detection/camera_detection.html")
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    notification_email = ""
+    if settings and settings.notification_email:
+        notification_email = settings.notification_email
+    if not notification_email:
+        from flask import current_app
+        notification_email = current_app.config.get("NOTIFICATION_EMAIL", "")
+    return render_template("detection/camera_detection.html",
+                           notification_email=notification_email)
 
 
 # ── Camera Frame Inference API ────────────────────────────────────────────────
@@ -478,12 +492,28 @@ def api_detect_frame():
             det = _save_detection(result, f"frame_{uid}.jpg", lat, lon, location_name, maps_link_val, source="camera")
             saved_to_db = True
 
-            # Auto email/SMS/WhatsApp alert for live camera detection (asynchronous + throttled)
+            # Email alert for live camera detection — synchronous, every detection, no throttle
             if current_user.is_authenticated:
                 settings = UserSettings.query.filter_by(user_id=current_user.id).first()
-                if settings:
-                    trigger_notifications(det, result, settings, lat, lon, location_name, maps_link_val, source="camera")
-                    email_status = {"sent": True if settings.email_alerts else False, "message": "Alert processing asynchronously"}
+                # Resolve recipient: form data email OR settings notification_email
+                cam_recipient = sanitize_email(data.get("email", ""))
+                if not cam_recipient and settings and settings.notification_email:
+                    cam_recipient = sanitize_email(settings.notification_email)
+                if cam_recipient:
+                    notif_res = trigger_notifications(
+                        det, result, settings, lat, lon, location_name, maps_link_val,
+                        recipient_email=cam_recipient, source="camera", sync=True
+                    )
+                    email_status = {
+                        "sent":      notif_res["email_sent"],
+                        "recipient": cam_recipient,
+                        "message":   notif_res["email_error"] or (
+                            f"Email sent to {cam_recipient}" if notif_res["email_sent"]
+                            else "Email failed"
+                        ),
+                    }
+                else:
+                    email_status = {"sent": False, "message": "No email recipient configured in Settings"}
         except Exception as exc:
             return jsonify({"success": False, "error": str(exc)}), 500
 

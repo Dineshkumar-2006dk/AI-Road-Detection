@@ -191,7 +191,26 @@ def send_detection_report(
     }
 
     try:
-        response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=15)
+        # Retry once on network/timeout errors (Render cold-start or transient failure)
+        last_err = None
+        for attempt in range(2):
+            try:
+                response = requests.post(
+                    "https://api.brevo.com/v3/smtp/email",
+                    json=payload, headers=headers, timeout=20
+                )
+                break
+            except requests.exceptions.Timeout:
+                last_err = "Request timed out"
+                if attempt == 0:
+                    import time; time.sleep(2)
+            except requests.exceptions.ConnectionError as ce:
+                last_err = f"Connection error: {ce}"
+                if attempt == 0:
+                    import time; time.sleep(2)
+        else:
+            return {"success": False, "message": f"Email network error after retry: {last_err}"}
+
         if response.status_code in (200, 201, 202):
             return {"success": True, "message": f"Report sent successfully to {recipient_email}"}
         else:
@@ -199,6 +218,13 @@ def send_detection_report(
                 err_msg = response.json().get("message", response.text)
             except Exception:
                 err_msg = response.text
-            return {"success": False, "message": f"Brevo API error ({response.status_code}): {err_msg}"}
+            # Special guidance for IP restriction error
+            if "unrecognised IP" in err_msg or response.status_code == 401:
+                err_msg = (
+                    f"Brevo API error ({response.status_code}): IP not whitelisted. "
+                    "Go to Brevo → My Account → Security → Authorised IPs → "
+                    "click 'Deactivate' to allow all IPs (needed for Render which changes IPs on restart)."
+                )
+            return {"success": False, "message": err_msg}
     except Exception as e:
         return {"success": False, "message": f"Failed to send email: {str(e)}"}

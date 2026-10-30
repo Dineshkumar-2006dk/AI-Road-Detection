@@ -149,5 +149,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+  // Injected by server — used by camera.js for auto email
+  window.notificationEmail = {{ notification_email | tojson }};
+</script>
 <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
 {% endblock %}
